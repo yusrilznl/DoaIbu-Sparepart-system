@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SparePart } from '../../types/inventory';
 import { useInventory } from '../../context/InventoryContext';
-import { X, Save, Tag, Camera, Calculator, ShoppingBag } from 'lucide-react';
+import { X, Save, Tag, Camera, ShoppingBag, Loader2 } from 'lucide-react';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 
 interface ItemModalProps {
@@ -20,11 +20,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   const [satuan, setSatuan] = useState(initialPart?.satuan || 'Pcs');
   const [stokRealtime, setStokRealtime] = useState(initialPart?.stokRealtime || 0);
   const [stokMin, setStokMin] = useState(initialPart?.stokMin || 2);
-  const [stokMax, setStokMax] = useState(initialPart?.stokMax || 0); // 0 = tidak di-set
+  const [stokMax, setStokMax] = useState(initialPart?.stokMax || 0);
   const [hargaBeli, setHargaBeli] = useState(initialPart?.hargaBeli || 0);
   const [hargaJual, setHargaJual] = useState(initialPart?.hargaJual || 0);
 
-  // Dedicated Marketplace Pricing (Shopee & Tokopedia / TikTok Shop)
+  // Dedicated Marketplace Pricing
   const [hargaShopee, setHargaShopee] = useState(initialPart?.hargaShopee || initialPart?.hargaJual || 0);
   const [adminFeeShopeePercent, setAdminFeeShopeePercent] = useState(initialPart?.adminFeeShopeePercent || 8.5);
 
@@ -35,6 +35,16 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   const [deskripsi, setDeskripsi] = useState(initialPart?.deskripsi || '');
 
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+
+  // Format IDR Helper Function
+  const formatIdr = (val: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(val || 0);
+  };
 
   // Profit Margin Offline Store
   const marginStoreRp = hargaJual - hargaBeli;
@@ -53,6 +63,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
 
     if (!kodeItem.trim() || !namaSparepart.trim()) {
       showToast('Part Number dan Nama Sparepart wajib diisi!', 'error');
+      return;
+    }
+
+    if (isCompressing) {
+      showToast('Mohon tunggu hingga pemrosesan foto selesai.', 'error');
       return;
     }
 
@@ -92,8 +107,32 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
     showToast(`Part Number "${scannedCode}" berhasil dimasukkan dari hasil scan kamera.`, 'success');
   };
 
-  const formatIdr = (val: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsCompressing(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 200;
+          const scaleFactor = MAX_WIDTH / img.width;
+
+          canvas.width = scaleFactor < 1 ? MAX_WIDTH : img.width;
+          canvas.height = scaleFactor < 1 ? img.height * scaleFactor : img.height;
+
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.35);
+          setFotoProduk(compressedBase64);
+          setIsCompressing(false);
+        };
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -184,8 +223,10 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
             <label className="block text-slate-700 font-bold">Foto Produk / Gambar Sparepart</label>
             <div className="flex items-center gap-3">
               <div className="w-16 h-16 rounded-xl bg-white border border-slate-300 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
-                {fotoProduk ? (
-                  <img src={fotoProduk} alt="Preview Foto Sparepart" className="w-full h-full object-cover" />
+                {isCompressing ? (
+                  <Loader2 className="w-6 h-6 text-[#0B3C85] animate-spin" />
+                ) : fotoProduk ? (
+                  <img src={fotoProduk} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center p-1 text-slate-400 text-[10px]">
                     <Camera className="w-5 h-5 mx-auto mb-0.5 text-slate-300" />
@@ -193,41 +234,29 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
                   </div>
                 )}
               </div>
-              <div className="flex-1 space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="Masukkan URL Foto (https://...) atau upload gambar..."
-                  value={fotoProduk}
-                  onChange={e => setFotoProduk(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl font-mono text-xs text-slate-900 focus:border-[#0B3C85] focus:outline-none"
-                />
+
+              <div className="flex-1 space-y-1">
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setFotoProduk(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  className="text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-50 file:text-[#0B3C85] hover:file:bg-blue-100"
+                  onChange={handleImageChange}
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#0B3C85] hover:file:bg-blue-100 cursor-pointer"
                 />
+                <p className="text-[10px] text-slate-400">
+                  {isCompressing ? 'Mengompresi foto...' : 'Format: JPG, PNG, WEBP (Otomatis dikompresi)'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Grid 3: Lokasi Rak (Manual Text Input), Stok, Satuan */}
+          {/* Grid 3: Lokasi Rak, Stok, Satuan */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-slate-700 font-bold mb-1">Lokasi Rak / Alamat Gudang*</label>
               <input
                 type="text"
                 required
-                placeholder="Masukkan lokasi rak / alamat gudang manual..."
+                placeholder="A-01-01"
                 value={lokasiRak}
                 onChange={e => setLokasiRak(e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-red-600 focus:border-[#0B3C85] focus:outline-none uppercase"
@@ -265,18 +294,6 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
                 value={stokMin}
                 onChange={e => setStokMin(Number(e.target.value))}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-red-600 focus:border-[#0B3C85] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Batas Stok Max (Overstock) <span className="text-slate-400 font-normal text-[10px]">— opsional, 0 = nonaktif</span></label>
-              <input
-                type="number"
-                min="0"
-                value={stokMax}
-                onChange={e => setStokMax(Number(e.target.value))}
-                placeholder="0"
-                className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl font-mono font-bold text-amber-700 focus:border-amber-500 focus:outline-none"
               />
             </div>
           </div>
@@ -406,13 +423,14 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold shadow transition flex items-center gap-1.5"
+              disabled={isCompressing}
+              className="px-6 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-900 disabled:bg-slate-400 text-white font-extrabold shadow transition flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="w-4 h-4" /> Simpan Sparepart
             </button>
@@ -420,7 +438,6 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
         </form>
       </div>
 
-      {/* Barcode Scanner Modal for ItemModal */}
       <BarcodeScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}

@@ -15,8 +15,8 @@ export const LoginPage: React.FC = () => {
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP_INPUT'>('CREDENTIALS');
 
   // Credentials form - Default Owner Email yusrilznl@gmail.com
-  const [email, setEmail] = useState<string>('yusrilznl@gmail.com');
-  const [password, setPassword] = useState<string>('password123');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
 
@@ -201,6 +201,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="email"
                     required
+                    autoComplete='off'
                     placeholder="yusrilznl@gmail.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -226,6 +227,7 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete='new-password'
                     placeholder="Masukkan password..."
                     value={password}
                     onChange={e => setPassword(e.target.value)}

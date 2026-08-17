@@ -290,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    const matchedUser = whitelistUsers.find(u => u.email === cleanEmail);
+    const matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
     if (!matchedUser) return false;
 
     const userProfile: UserProfile = {

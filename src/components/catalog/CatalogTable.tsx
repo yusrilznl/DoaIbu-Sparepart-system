@@ -245,19 +245,39 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
               ) : (
                 filteredParts.map(part => {
                   const isLowStock = part.stokRealtime <= part.stokMin;
-
+// Tambahkan di dalam filteredParts.map(part => {
+console.log("Data Part:", part);
                   return (
                     <tr key={part.id} className="hover:bg-slate-50 transition">
                       {/* Photo & Part Number */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                            {part.fotoProduk ? (
-                              <img src={part.fotoProduk} alt={part.kodeItem} className="w-10 h-10 rounded-lg object-cover" />
-                            ) : (
-                              <Layers className="w-5 h-5 text-slate-400" />
-                            )}
-                          </div>
+                  {/* KODE BARU - PASTI MUNCIUL & TAHAN ERROR */}
+{/* Kolom Foto Sparepart - Support Array gambar & string fotoProduk */}
+<div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+  {(() => {
+    // Ambil URL gambar dari array gambar[0] atau string fotoProduk/foto/imageUrl
+    const p = part as any;
+    const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
+      ? p.gambar[0] 
+      : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
+
+    if (imgSrc) {
+      return (
+        <img 
+          src={imgSrc} 
+          alt={part.namaSparepart} 
+          className="w-full h-full object-cover rounded-xl"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      );
+    }
+
+    return <Layers className="w-5 h-5 text-slate-400" />;
+  })()}
+</div>
                           <div>
                             <span className="font-mono font-black text-black text-sm block leading-none">{part.kodeItem}</span>
                             {part.oemNumber && (

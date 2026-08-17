@@ -43,6 +43,7 @@ interface InventoryContextType {
   logActivity: (action: ActivityAction, detail: string, opts?: { targetId?: string; targetLabel?: string; sebelum?: string; sesudah?: string; modul?: string }) => void;
   getLowStockParts: () => SparePart[];
   getOverstockParts: () => SparePart[];
+  syncLocalToSupabase?: () => Promise<void>;
 }
 
 const LOCAL_STORAGE_KEY_PARTS = 'optipart_doaibu_parts_v5';
@@ -53,7 +54,7 @@ const LOCAL_STORAGE_KEY_LOCATION = 'optipart_doaibu_location_v5';
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
-// 1. Mapping dari Supabase DB (snake_case) -> React State (camelCase)
+// 1. Mapping DB -> React State
 const mapDbToSparePart = (row: any): SparePart => ({
   id: String(row.id),
   kodeItem: row.kode_item || row.kodeItem || '',
@@ -69,38 +70,43 @@ const mapDbToSparePart = (row: any): SparePart => ({
   hargaJual: Number(row.harga_jual ?? row.hargaJual ?? 0),
   nomorPartPabrikan: row.nomor_part_pabrikan || row.nomorPartPabrikan,
   terakhirDiupdate: row.terakhir_diupdate || row.terakhirDiupdate || new Date().toISOString(),
-  deskripsi: row.deskripsi,
-  status: row.status,
+  deskripsi: row.deskripsi || '',
+  status: row.status || 'AKTIF',
   gambar: Array.isArray(row.gambar)
     ? row.gambar
     : (row.gambar ? JSON.parse(row.gambar) : []),
 } as unknown as SparePart);
 
-// 2. Mapping dari React State (camelCase) -> Supabase DB (snake_case)
-// Mapping dari React State (camelCase) -> Supabase DB (snake_case)
+// 2. Mapping React State -> DB (dengan Fallback Default agar tidak ada Null Constraint Error)
 const mapSparePartToDb = (part: any) => {
+  // Tangkap gambar baik dari fotoProduk maupun array gambar
+  const imageSource = part.fotoProduk || part.gambar || [];
+  
+  const gambarData = Array.isArray(imageSource)
+    ? JSON.stringify(imageSource)
+    : (typeof imageSource === 'string' && imageSource ? JSON.stringify([imageSource]) : '[]');
+
   const dbPayload: any = {
-    kode_item: part.kodeItem,
-    nama_sparepart: part.namaSparepart,
-    brand: part.brand,
-    kategori: part.kategori,
-    lokasi_rak: part.lokasiRak,
-    stok_realtime: part.stokRealtime,
-    stok_min: part.stokMin,
-    stok_max: part.stokMax,
-    satuan: part.satuan,
-    harga_beli: part.hargaBeli,
-    harga_jual: part.hargaJual,
-    nomor_part_pabrikan: part.nomorPartPabrikan,
-    terakhir_diupdate: part.terakhirDiupdate,
-    deskripsi: part.deskripsi,
-    status: part.status,
-    gambar: part.gambar || [],
+    kode_item: part.kodeItem || '',
+    nama_sparepart: part.namaSparepart || '',
+    brand: part.brand || 'GENUINE',
+    kategori: part.kategori || 'Umum',
+    lokasi_rak: part.lokasiRak || '-',
+    stok_realtime: Number(part.stokRealtime ?? 0),
+    stok_min: Number(part.stokMin ?? 0),
+    stok_max: part.stokMax !== undefined && part.stokMax !== null ? Number(part.stokMax) : 0,
+    satuan: part.satuan || 'PCS',
+    harga_beli: Number(part.hargaBeli ?? 0),
+    harga_jual: Number(part.hargaJual ?? 0),
+    nomor_part_pabrikan: part.nomorPartPabrikan || part.oemNumber || '-',
+    terakhir_diupdate: part.terakhirDiupdate || new Date().toISOString(),
+    deskripsi: part.deskripsi || '',
+    status: part.status || 'AKTIF',
+    gambar: gambarData,
   };
 
-  // Hanya sertakan ID jika berupa angka/UUID murni (bukan ID temporer 'part-...')
-  if (part.id && !String(part.id).startsWith('part-')) {
-    dbPayload.id = part.id;
+  if (part.id && !isNaN(Number(part.id))) {
+    dbPayload.id = Number(part.id);
   }
 
   return dbPayload;
@@ -109,28 +115,27 @@ const mapSparePartToDb = (part: any) => {
 const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const auth = useAuth();
 
-  const [parts, setParts] = useState<SparePart[]>([]);
+  const [parts, setParts] = useState<SparePart[]>(() => {
+  const localData = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
+  return localData ? JSON.parse(localData) : INITIAL_SPAREPARTS;
+});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load parts: Utamakan Supabase agar data selalu terbaru
-
-  useEffect(() => {
+useEffect(() => {
     const loadParts = async () => {
-      // 1. Ambil data dari LocalStorage perangkat ini (jika ada)
+      let currentLocal: SparePart[] = [];
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
-      let localData: SparePart[] = [];
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            localData = parsed;
+            currentLocal = parsed;
           }
         } catch (e) {
           console.error('Failed to parse parts from localStorage', e);
         }
       }
 
-      // 2. Utamakan ambil data dari tabel Supabase 'products'
       try {
         const { data, error } = await supabase.from('products').select('*');
         if (!error && data && data.length > 0) {
@@ -144,11 +149,10 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Supabase fetch failed:', e);
       }
 
-      // 3. Jika Supabase masih kosong, gunakan data lokal (agar data kamu tidak hilang)
-      if (localData.length > 0) {
-        setParts(localData);
+      // Fallback jika Supabase kosong/gagal
+      if (currentLocal.length > 0) {
+        setParts(currentLocal);
       } else {
-        // Jika di mana-mana kosong total, baru gunakan mock data
         setParts(INITIAL_SPAREPARTS);
         localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(INITIAL_SPAREPARTS));
       }
@@ -194,7 +198,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'info', visible: false });
 
-  // Auto-sync State ke LocalStorage
   useEffect(() => {
     if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(parts));
   }, [parts, isLoaded]);
@@ -275,15 +278,29 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         { targetId: existingId, targetLabel: partData.kodeItem, sebelum: JSON.stringify({ stok: stokSebelum }), sesudah: JSON.stringify({ stok: stokSesudah }), modul: 'catalog' }
       );
 
-      // Async sync ke Supabase dengan format snake_case
+      // Payload untuk Supabase Update
       const dbPayload = mapSparePartToDb(updatedPart);
+      if (isNaN(Number(dbPayload.id))) {
+        delete dbPayload.id;
+      } else {
+        dbPayload.id = Number(dbPayload.id);
+      }
+
       supabase.from('products').upsert([dbPayload]).then(({ error }) => {
-        if (error) console.error('Supabase upsert error:', error.message);
+        if (error) {
+          console.error('❌ Supabase Update Error:', error.message);
+          showToast(`Gagal sync Supabase: ${error.message}`, 'error');
+        } else {
+          console.log('✅ Berhasil update Supabase!');
+          showToast('✅ Tersimpan di Supabase!', 'success');
+        }
       });
 
       return updatedPart;
     } else {
-      const newPart = { ...partData, id: 'part-' + Date.now(), terakhirDiupdate: nowStr } as SparePart;
+      // Buat ID numerik murni dari timestamp Unix
+      const numericId = Date.now();
+      const newPart = { ...partData, id: String(numericId), terakhirDiupdate: nowStr } as SparePart;
       
       const nextParts = [newPart, ...parts];
       setParts(nextParts);
@@ -295,13 +312,41 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         { targetId: newPart.id, targetLabel: newPart.kodeItem, modul: 'catalog' }
       );
 
-      // Async sync ke Supabase dengan format snake_case
+      // Payload untuk Supabase Insert
       const dbPayload = mapSparePartToDb(newPart);
-      supabase.from('products').insert([dbPayload]).then(({ error }) => {
-        if (error) console.error('Supabase insert error:', error.message);
+      dbPayload.id = numericId; // Kirim ID sebagai Number agar tidak Not-Null Constraint di Supabase
+
+      supabase.from('products').insert([dbPayload]).select().then(({ data, error }) => {
+        if (error) {
+          console.error('❌ Supabase Insert Error:', error.message);
+          showToast(`Gagal simpan ke Supabase: ${error.message}`, 'error');
+        } else {
+          console.log('✅ Berhasil simpan ke Supabase:', data);
+          showToast('✅ Berhasil tersimpan di Supabase!', 'success');
+        }
       });
 
       return newPart;
+    }
+  };
+
+  const syncLocalToSupabase = async () => {
+    if (parts.length === 0) return;
+    try {
+      const dbPayload = parts.map(mapSparePartToDb);
+      const { data, error } = await supabase
+        .from('products')
+        .upsert(dbPayload, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Gagal sync ke Supabase:', error.message);
+        alert('Gagal simpan ke Supabase: ' + error.message);
+      } else {
+        console.log('Berhasil sync ke Supabase:', data);
+        alert('Berhasil upload data ke Supabase!');
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -354,7 +399,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
         const updatedPart = { ...part, stokRealtime: updatedQty, terakhirDiupdate: nowStr };
 
-        // Sync stok baru ke Supabase
         const dbPayload = mapSparePartToDb(updatedPart);
         supabase.from('products').upsert([dbPayload]).then(({ error }) => {
           if (error) console.error('Supabase stock update error:', error.message);
@@ -398,7 +442,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         
         const updatedPart = { ...part, stokRealtime: targetPhysical, terakhirDiupdate: nowStr };
 
-        // Sync hasil opname ke Supabase
         const dbPayload = mapSparePartToDb(updatedPart);
         supabase.from('products').upsert([dbPayload]).then(({ error }) => {
           if (error) console.error('Supabase opname update error:', error.message);
@@ -481,7 +524,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       if (p.id === mutationData.partId) {
         const updatedPart = { ...p, lokasiRak: mutationData.keLokasi, terakhirDiupdate: nowStr };
         
-        // Sync lokasi baru ke Supabase
         const dbPayload = mapSparePartToDb(updatedPart);
         supabase.from('products').upsert([dbPayload]).then(({ error }) => {
           if (error) console.error('Supabase location update error:', error.message);
@@ -523,6 +565,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         logActivity,
         getLowStockParts,
         getOverstockParts,
+        syncLocalToSupabase,
       }}
     >
       {children}
