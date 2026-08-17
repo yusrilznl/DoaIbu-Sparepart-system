@@ -77,25 +77,34 @@ const mapDbToSparePart = (row: any): SparePart => ({
 } as unknown as SparePart);
 
 // 2. Mapping dari React State (camelCase) -> Supabase DB (snake_case)
-const mapSparePartToDb = (part: any) => ({
-  id: part.id,
-  kode_item: part.kodeItem,
-  nama_sparepart: part.namaSparepart,
-  brand: part.brand,
-  kategori: part.kategori,
-  lokasi_rak: part.lokasiRak,
-  stok_realtime: part.stokRealtime,
-  stok_min: part.stokMin,
-  stok_max: part.stokMax,
-  satuan: part.satuan,
-  harga_beli: part.hargaBeli,
-  harga_jual: part.hargaJual,
-  nomor_part_pabrikan: part.nomorPartPabrikan,
-  terakhir_diupdate: part.terakhirDiupdate,
-  deskripsi: part.deskripsi,
-  status: part.status,
-  gambar: part.gambar || [],
-});
+// Mapping dari React State (camelCase) -> Supabase DB (snake_case)
+const mapSparePartToDb = (part: any) => {
+  const dbPayload: any = {
+    kode_item: part.kodeItem,
+    nama_sparepart: part.namaSparepart,
+    brand: part.brand,
+    kategori: part.kategori,
+    lokasi_rak: part.lokasiRak,
+    stok_realtime: part.stokRealtime,
+    stok_min: part.stokMin,
+    stok_max: part.stokMax,
+    satuan: part.satuan,
+    harga_beli: part.hargaBeli,
+    harga_jual: part.hargaJual,
+    nomor_part_pabrikan: part.nomorPartPabrikan,
+    terakhir_diupdate: part.terakhirDiupdate,
+    deskripsi: part.deskripsi,
+    status: part.status,
+    gambar: part.gambar || [],
+  };
+
+  // Hanya sertakan ID jika berupa angka/UUID murni (bukan ID temporer 'part-...')
+  if (part.id && !String(part.id).startsWith('part-')) {
+    dbPayload.id = part.id;
+  }
+
+  return dbPayload;
+};
 
 const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const auth = useAuth();
@@ -104,9 +113,24 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load parts: Utamakan Supabase agar data selalu terbaru
+
   useEffect(() => {
     const loadParts = async () => {
-      // Prioritas 1: Ambil data dari Supabase
+      // 1. Ambil data dari LocalStorage perangkat ini (jika ada)
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
+      let localData: SparePart[] = [];
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localData = parsed;
+          }
+        } catch (e) {
+          console.error('Failed to parse parts from localStorage', e);
+        }
+      }
+
+      // 2. Utamakan ambil data dari tabel Supabase 'products'
       try {
         const { data, error } = await supabase.from('products').select('*');
         if (!error && data && data.length > 0) {
@@ -120,24 +144,14 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Supabase fetch failed:', e);
       }
 
-      // Prioritas 2: Gunakan LocalStorage jika Supabase kosong / offline
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setParts(parsed);
-            setIsLoaded(true);
-            return;
-          }
-        } catch (e) {
-          console.error('Failed to parse parts from localStorage', e);
-        }
+      // 3. Jika Supabase masih kosong, gunakan data lokal (agar data kamu tidak hilang)
+      if (localData.length > 0) {
+        setParts(localData);
+      } else {
+        // Jika di mana-mana kosong total, baru gunakan mock data
+        setParts(INITIAL_SPAREPARTS);
+        localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(INITIAL_SPAREPARTS));
       }
-
-      // Prioritas 3: Fallback data awal (Mock Data)
-      setParts(INITIAL_SPAREPARTS);
-      localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(INITIAL_SPAREPARTS));
       setIsLoaded(true);
     };
 

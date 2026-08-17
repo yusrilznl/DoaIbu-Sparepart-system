@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return INITIAL_WHITELIST[0]; // Default Owner Yusril Zainal
+    return null; // INITIAL_WHITELIST[0]; // Default Owner Yusril Zainal
   });
 
   // Eye Toggle State for Hide/Show Financial Figures
