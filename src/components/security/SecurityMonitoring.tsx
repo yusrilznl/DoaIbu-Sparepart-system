@@ -4,6 +4,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { ShieldCheck, UserPlus, AlertOctagon, Activity, Trash2, Power, Search, KeyRound, CheckCircle2, Lock, Copy, SlidersHorizontal, UserCheck } from 'lucide-react';
 import { UserRole } from '../../types/auth';
 import { WhitelistRecord } from '../../types/security';
+import { supabase } from '../../lib/supabaseClient'; // Pastikan path ini sesuai (supabase atau supabaseClient)
 
 interface ModuleDef {
   id: string;
@@ -33,8 +34,9 @@ export const SecurityMonitoring: React.FC = () => {
   const [newEmail, setNewEmail] = useState<string>('');
   const [newName, setNewName] = useState<string>('');
   const [newRole, setNewRole] = useState<UserRole>('ADMIN_GUDANG');
-  const [newRoleTitle, setNewRoleTitle] = useState<string>('Staff Admin Gudang');
+  const [newRoleTitle, setNewRoleTitle] = useState<string>('Head Stock Admin Gudang');
   const [newPassword, setNewPassword] = useState<string>('password123');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Permission Matrix Modal state
   const [permissionTargetUser, setPermissionTargetUser] = useState<WhitelistRecord | null>(null);
@@ -45,26 +47,57 @@ export const SecurityMonitoring: React.FC = () => {
   const successfulLoginsCount = securityLogs.filter(l => l.status === 'SUCCESS').length;
   const suspiciousAttemptsCount = securityLogs.filter(l => l.isSuspicious).length;
 
-  const handleCreateWhitelist = (e: React.FormEvent) => {
+  // 🚀 FUNGSI SIMPAN TERHUBUNG LANGSUNG KE SUPABASE
+  const handleCreateWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !newName.trim()) {
       showToast('Email dan Nama User wajib diisi!', 'error');
       return;
     }
 
-    addWhitelistUser({
-      email: newEmail.trim().toLowerCase(),
-      name: newName.trim(),
-      role: newRole,
-      roleTitle: newRoleTitle,
-      status: 'AKTIF',
-      passwordHash: newPassword || 'password123'
-    });
+    setIsLoading(true);
 
-    showToast(`Email "${newEmail}" berhasil ditambahkan ke Whitelist!`, 'success');
-    setIsAddModalOpen(false);
-    setNewEmail('');
-    setNewName('');
+    try {
+      const emailFormatted = newEmail.trim().toLowerCase();
+
+      // 1. Simpan ke Database Supabase (Tabel 'users')
+      const { data, error } = await supabase
+        .from('users')
+        .insert([
+          {
+            email: emailFormatted,
+            full_name: newName.trim(),
+            role: newRole, // e.g. 'SUPER_ADMIN', 'OWNER', 'DEPUTI_DIREKTUR', dll.
+          }
+        ])
+        .select();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // 2. Update state lokal di AuthContext jika ada
+      if (addWhitelistUser) {
+        addWhitelistUser({
+          email: emailFormatted,
+          name: newName.trim(),
+          role: newRole,
+          roleTitle: newRoleTitle,
+          status: 'AKTIF',
+          passwordHash: newPassword || 'password123'
+        });
+      }
+
+      showToast(`Email "${emailFormatted}" berhasil disimpan ke Supabase!`, 'success');
+      setIsAddModalOpen(false);
+      setNewEmail('');
+      setNewName('');
+    } catch (err: any) {
+      console.error('Error inserting user to Supabase:', err);
+      showToast(`Gagal menyimpan ke Supabase: ${err.message}`, 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleToggleStatus = (id: string, name: string, currentStatus: string) => {
@@ -477,15 +510,21 @@ export const SecurityMonitoring: React.FC = () => {
                   onChange={e => {
                     const role = e.target.value as UserRole;
                     setNewRole(role);
-                    if (role === 'SUPER_ADMIN') setNewRoleTitle('Owner / Super Admin');
+                    if (role === 'SUPER_ADMIN') setNewRoleTitle('Super Admin');
+                    else if (role === 'OWNER') setNewRoleTitle('Owner / Pemilik Toko');
+                    else if (role === 'DEPUTI_DIREKTUR') setNewRoleTitle('Deputi Direktur');
                     else if (role === 'ADMIN_GUDANG') setNewRoleTitle('Head Stock Admin Gudang');
-                    else setNewRoleTitle('Petugas Stock Opname & Scan');
+                    else if (role === 'PETUGAS_GUDANG') setNewRoleTitle('Petugas Stock Opname & Scan');
+                    else setNewRoleTitle('Auditor System');
                   }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-black font-bold focus:border-[#0B3C85] focus:outline-none"
                 >
-                  <option value="SUPER_ADMIN">SUPER_ADMIN (Akses Penuh Owner)</option>
+                  <option value="SUPER_ADMIN">SUPER_ADMIN (Akses Penuh Super Admin)</option>
+                  <option value="OWNER">OWNER (Owner)</option>
+                  <option value="DEPUTI_DIREKTUR">DEPUTI_DIREKTUR (Deputi Direktur)</option>
                   <option value="ADMIN_GUDANG">ADMIN_GUDANG (Kelola Katalog & Mutasi)</option>
                   <option value="PETUGAS_GUDANG">PETUGAS_GUDANG (Stock Opname & Scan Only)</option>
+                  <option value="AUDITOR">AUDITOR (Read-Only Audit)</option>
                 </select>
               </div>
 
@@ -512,9 +551,10 @@ export const SecurityMonitoring: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold shadow transition"
+                  disabled={isLoading}
+                  className="px-5 py-2 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold shadow transition disabled:opacity-50"
                 >
-                  Simpan Whitelist
+                  {isLoading ? 'Menyimpan...' : 'Simpan Whitelist'}
                 </button>
               </div>
             </form>

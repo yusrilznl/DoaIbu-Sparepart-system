@@ -202,7 +202,7 @@ export const LoginPage: React.FC = () => {
                     type="email"
                     required
                     autoComplete='off'
-                    placeholder="yusrilznl@gmail.com"
+                    placeholder="Masukkan email terdaftar..."
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition"
