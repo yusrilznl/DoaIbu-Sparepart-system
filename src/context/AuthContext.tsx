@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types/auth';
 import { WhitelistRecord, SecurityAuditLog, ActiveOtpLog } from '../types/security';
+import { supabase } from '../lib/supabaseClient'; // Import client Supabase
 
 const ALL_MODULES = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security', 'audit'];
 const AUDITOR_MODULES = ['dashboard', 'reports', 'audit'];
@@ -87,8 +88,8 @@ interface AuthContextType {
   activeOtps: ActiveOtpLog[];
   isFinancialPrivacyEnabled: boolean; // Hide/Show price toggle state
   toggleFinancialPrivacy: () => void;
-  login: (email: string, pass: string) => boolean;
-  requestOtp: (email: string, pass: string) => { success: boolean; error?: string; user?: WhitelistRecord; otpCode?: string };
+  login: (email: string, pass: string) => Promise<boolean>;
+  requestOtp: (email: string, pass: string) => Promise<{ success: boolean; error?: string; user?: WhitelistRecord; otpCode?: string }>;
   verifyOtp: (email: string, inputOtp: string) => boolean;
   updateUserPassword: (email: string, newPassword: string) => boolean;
   logout: () => void;
@@ -134,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return null; // INITIAL_WHITELIST[0]; // Default Owner Yusril Zainal
+    return null;
   });
 
   // Eye Toggle State for Hide/Show Financial Figures
@@ -201,76 +202,119 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUnregisteredEmailInput('');
   };
 
-  const requestOtp = (emailInput: string, passwordInput: string) => {
+  const requestOtp = async (emailInput: string, passwordInput: string) => {
     clearLoginErrors();
     const cleanEmail = emailInput.trim().toLowerCase();
 
-    const matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
+    try {
+      // 1. Verifikasi Password via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: passwordInput,
+      });
 
-    if (!matchedUser) {
-      setIsUnregisteredEmail(true);
-      setUnregisteredEmailInput(cleanEmail);
-      const errorMsg = 'Sistem Terkunci: Email Anda belum didaftarkan oleh Super Admin. Untuk keamanan gudang, silakan hubungi Owner/Super Admin untuk membuka akses.';
-      setLoginError(errorMsg);
-      addSecurityLog(
-        cleanEmail,
-        'ILLEGAL_UNREGISTERED_EMAIL',
-        'Akses Ilegal (Unregistered)',
-        true,
-        'Percobaan login menggunakan email yang belum terdaftar di Whitelist'
-      );
-      return { success: false, error: errorMsg };
+      // 2. Cari user di state whitelist lokal
+      let matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+      // Jika password di Supabase Auth gagal, tes fallback ke passwordHash di lokal jika akun mock/dev
+      if (authError) {
+        if (!matchedUser || matchedUser.passwordHash !== passwordInput) {
+          const errorMsg = 'Email atau Password salah. Silakan periksa kembali!';
+          setLoginError(errorMsg);
+          addSecurityLog(
+            cleanEmail,
+            'FAILED_WRONG_PASSWORD',
+            'Password/Email Salah',
+            true,
+            authError.message
+          );
+          return { success: false, error: errorMsg };
+        }
+      }
+
+      // Jika belum ada di state lokal, coba ambil data profilnya dari Supabase DB (tabel 'users')
+      if (!matchedUser) {
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', cleanEmail)
+          .single();
+
+        if (dbUser) {
+          matchedUser = {
+            id: dbUser.id || (authData.user ? authData.user.id : 'wl-' + Date.now()),
+            email: dbUser.email,
+            name: dbUser.full_name || dbUser.name || 'User Gudang',
+            role: dbUser.role || 'ADMIN_GUDANG',
+            roleTitle: dbUser.role || 'Staf Gudang',
+            status: 'AKTIF',
+            registeredDate: dbUser.created_at || new Date().toISOString(),
+            passwordHash: passwordInput,
+            allowedModules: ['dashboard', 'catalog', 'opname', 'outbound', 'inbound']
+          };
+          // Masukkan ke state whitelist lokal
+          setWhitelistUsers(prev => [...prev, matchedUser!]);
+        }
+      }
+
+      if (!matchedUser) {
+        setIsUnregisteredEmail(true);
+        setUnregisteredEmailInput(cleanEmail);
+        const errorMsg = 'Sistem Terkunci: Email Anda belum didaftarkan oleh Super Admin.';
+        setLoginError(errorMsg);
+        addSecurityLog(
+          cleanEmail,
+          'ILLEGAL_UNREGISTERED_EMAIL',
+          'Akses Ilegal (Unregistered)',
+          true,
+          'Percobaan login menggunakan email yang belum terdaftar di Whitelist'
+        );
+        return { success: false, error: errorMsg };
+      }
+
+      if (matchedUser.status === 'NONAKTIF') {
+        const errorMsg = 'Akses Ditolak: Akun Anda sedang dinonaktifkan oleh Super Admin.';
+        setLoginError(errorMsg);
+        addSecurityLog(
+          cleanEmail,
+          'FAILED_WRONG_PASSWORD',
+          'Akun Nonaktif',
+          true,
+          'Percobaan login akun nonaktif'
+        );
+        return { success: false, error: errorMsg };
+      }
+
+      // 3. Generate Kode OTP 6 digit
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const now = new Date();
+      const createdAt = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
+      const expiresAtDate = new Date(now.getTime() + 2 * 60 * 1000);
+      const expiresAt = expiresAtDate.toISOString().substring(0, 10) + ' ' + expiresAtDate.toTimeString().substring(0, 8);
+
+      const otpEntry: ActiveOtpLog = {
+        id: 'otp-' + Date.now(),
+        email: matchedUser.email,
+        userName: matchedUser.name,
+        otpCode: generatedOtp,
+        createdAt,
+        expiresAt,
+        isUsed: false
+      };
+
+      setActiveOtps(prev => [otpEntry, ...prev.filter(o => o.email !== matchedUser.email)]);
+
+      return {
+        success: true,
+        user: matchedUser,
+        otpCode: generatedOtp
+      };
+
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setLoginError('Terjadi kesalahan pada sistem autentikasi.');
+      return { success: false, error: err.message };
     }
-
-    if (matchedUser.status === 'NONAKTIF') {
-      const errorMsg = 'Akses Ditolak: Akun email Anda sedang dinonaktifkan oleh Super Admin.';
-      setLoginError(errorMsg);
-      addSecurityLog(
-        cleanEmail,
-        'FAILED_WRONG_PASSWORD',
-        'Akun Nonaktif',
-        true,
-        'Percobaan login akun nonaktif'
-      );
-      return { success: false, error: errorMsg };
-    }
-
-    if (matchedUser.passwordHash !== passwordInput) {
-      const errorMsg = 'Password yang Anda masukkan salah. Silakan periksa kembali.';
-      setLoginError(errorMsg);
-      addSecurityLog(
-        cleanEmail,
-        'FAILED_WRONG_PASSWORD',
-        'Password Salah',
-        true,
-        'Gagal mencocokkan password'
-      );
-      return { success: false, error: errorMsg };
-    }
-
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const now = new Date();
-    const createdAt = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
-    const expiresAtDate = new Date(now.getTime() + 2 * 60 * 1000);
-    const expiresAt = expiresAtDate.toISOString().substring(0, 10) + ' ' + expiresAtDate.toTimeString().substring(0, 8);
-
-    const otpEntry: ActiveOtpLog = {
-      id: 'otp-' + Date.now(),
-      email: matchedUser.email,
-      userName: matchedUser.name,
-      otpCode: generatedOtp,
-      createdAt,
-      expiresAt,
-      isUsed: false
-    };
-
-    setActiveOtps(prev => [otpEntry, ...prev.filter(o => o.email !== matchedUser.email)]);
-
-    return {
-      success: true,
-      user: matchedUser,
-      otpCode: generatedOtp
-    };
   };
 
   const verifyOtp = (emailInput: string, inputOtp: string): boolean => {
@@ -344,15 +388,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const login = (emailInput: string, passwordInput: string): boolean => {
-    const res = requestOtp(emailInput, passwordInput);
+  const login = async (emailInput: string, passwordInput: string): Promise<boolean> => {
+    const res = await requestOtp(emailInput, passwordInput);
     if (res.success && res.user && res.otpCode) {
       return verifyOtp(res.user.email, res.otpCode);
     }
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
     setCurrentUser(null);
     clearLoginErrors();
   };

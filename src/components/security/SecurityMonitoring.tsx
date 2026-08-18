@@ -48,6 +48,7 @@ export const SecurityMonitoring: React.FC = () => {
   const suspiciousAttemptsCount = securityLogs.filter(l => l.isSuspicious).length;
 
   // 🚀 FUNGSI SIMPAN TERHUBUNG LANGSUNG KE SUPABASE
+// 🚀 FUNGSI SIMPAN TERHUBUNG LANGSUNG KE SUPABASE AUTH & TABEL USERS
   const handleCreateWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !newName.trim()) {
@@ -59,24 +60,43 @@ export const SecurityMonitoring: React.FC = () => {
 
     try {
       const emailFormatted = newEmail.trim().toLowerCase();
+      const passwordToUse = newPassword.trim() || 'password123';
 
-      // 1. Simpan ke Database Supabase (Tabel 'users')
-      const { data, error } = await supabase
+      // 1. STEP 1: Buat Akun Resmi di Supabase Authentication
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: emailFormatted,
+        password: passwordToUse,
+      });
+
+      if (authError) {
+        // Jika akun sudah terdaftar di Supabase Auth, beri catatan di log dan lanjutkan ke penyiapan tabel users
+        console.warn('Proses Supabase Auth Notice/Warn:', authError.message);
+      }
+
+      const userId = authData?.user?.id;
+
+      // 2. STEP 2: Simpan ke Database Supabase (Tabel 'users')
+      const { data, error: dbError } = await supabase
         .from('users')
         .insert([
           {
+            ...(userId ? { id: userId } : {}), // Sambungkan ID Auth jika tersedia
             email: emailFormatted,
             full_name: newName.trim(),
-            role: newRole, // e.g. 'SUPER_ADMIN', 'OWNER', 'DEPUTI_DIREKTUR', dll.
+            role: newRole, // e.g. 'SUPER_ADMIN', 'OWNER', 'ADMIN_GUDANG', dll.
           }
         ])
         .select();
 
-      if (error) {
-        throw new Error(error.message);
+      if (dbError) {
+        // Handling jika email sudah terdaftar di tabel users
+        if (dbError.code === '23505') {
+          throw new Error(`Email "${emailFormatted}" sudah terdaftar di whitelist!`);
+        }
+        throw new Error(dbError.message);
       }
 
-      // 2. Update state lokal di AuthContext jika ada
+      // 3. STEP 3: Update state lokal di AuthContext
       if (addWhitelistUser) {
         addWhitelistUser({
           email: emailFormatted,
@@ -84,17 +104,18 @@ export const SecurityMonitoring: React.FC = () => {
           role: newRole,
           roleTitle: newRoleTitle,
           status: 'AKTIF',
-          passwordHash: newPassword || 'password123'
+          passwordHash: passwordToUse
         });
       }
 
-      showToast(`Email "${emailFormatted}" berhasil disimpan ke Supabase!`, 'success');
+      showToast(`User "${emailFormatted}" berhasil didaftarkan! Password: ${passwordToUse}`, 'success');
       setIsAddModalOpen(false);
       setNewEmail('');
       setNewName('');
+      setNewPassword('password123');
     } catch (err: any) {
       console.error('Error inserting user to Supabase:', err);
-      showToast(`Gagal menyimpan ke Supabase: ${err.message}`, 'error');
+      showToast(`Gagal menyimpan: ${err.message}`, 'error');
     } finally {
       setIsLoading(false);
     }
