@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
-import { Eye, EyeOff, ShieldCheck, Lock, Mail, AlertTriangle, ArrowRight, KeyRound, MessageCircle, Clock, RefreshCw, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, Lock, Mail, AlertTriangle, ArrowRight, KeyRound, MessageCircle, Clock, RefreshCw, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import { RegisterPassword } from './RegisterPassword';
 
 export const LoginPage: React.FC = () => {
@@ -13,6 +13,9 @@ export const LoginPage: React.FC = () => {
 
   // Login steps: 'CREDENTIALS' | 'OTP_INPUT'
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP_INPUT'>('CREDENTIALS');
+
+  // Loading state saat proses async ke AuthContext / Supabase
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Credentials form - Default Owner Email yusrilznl@gmail.com
   const [email, setEmail] = useState<string>('');
@@ -46,7 +49,7 @@ export const LoginPage: React.FC = () => {
     return <RegisterPassword onBackToLogin={() => setMode('LOGIN')} />;
   }
 
-  const handleRequestOtpSubmit = (e: React.FormEvent) => {
+  const handleRequestOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearLoginErrors();
 
@@ -55,16 +58,25 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const res = requestOtp(email, password);
-    if (res.success && res.otpCode && res.user) {
-      setActiveOtpCode(res.otpCode);
-      setStep('OTP_INPUT');
-      setTimerSeconds(120);
-      setFailedOtpAttempts(0);
-      setOtpDigits(['', '', '', '', '', '']);
+    setIsLoading(true);
 
-      // Show prominent Toast notification with OTP code for easy demo verification
-      showToast(`📩 Kode OTP Login Anda: ${res.otpCode}`, 'success');
+    try {
+      // Panggil requestOtp dengan AWAIT karena bernilai Promise
+      const res = await requestOtp(email, password);
+
+      if (res.success && res.otpCode && res.user) {
+        setActiveOtpCode(res.otpCode);
+        setStep('OTP_INPUT');
+        setTimerSeconds(120);
+        setFailedOtpAttempts(0);
+        setOtpDigits(['', '', '', '', '', '']);
+
+        showToast(`📩 Kode OTP Login Anda: ${res.otpCode}`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,13 +120,20 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleResendOtp = () => {
-    const res = requestOtp(email, password);
-    if (res.success && res.otpCode) {
-      setActiveOtpCode(res.otpCode);
-      setTimerSeconds(120);
-      setOtpDigits(['', '', '', '', '', '']);
-      showToast(`📩 Kode OTP Baru Anda: ${res.otpCode}`, 'success');
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    try {
+      const res = await requestOtp(email, password);
+      if (res.success && res.otpCode) {
+        setActiveOtpCode(res.otpCode);
+        setTimerSeconds(120);
+        setOtpDigits(['', '', '', '', '', '']);
+        showToast(`📩 Kode OTP Baru Anda: ${res.otpCode}`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -201,11 +220,12 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="email"
                     required
+                    disabled={isLoading}
                     autoComplete='off'
                     placeholder="Masukkan email terdaftar..."
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition"
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -227,11 +247,12 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    disabled={isLoading}
                     autoComplete='new-password'
                     placeholder="Masukkan password..."
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -246,7 +267,7 @@ export const LoginPage: React.FC = () => {
               {/* CAPTCHA Verification Box (Turnstile / reCAPTCHA v2 Simulation) */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
                 <label
-                  onClick={() => setIsCaptchaVerified(!isCaptchaVerified)}
+                  onClick={() => !isLoading && setIsCaptchaVerified(!isCaptchaVerified)}
                   className="flex items-center gap-3 cursor-pointer select-none"
                 >
                   <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${
@@ -266,10 +287,18 @@ export const LoginPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={!isCaptchaVerified}
+                disabled={!isCaptchaVerified || isLoading}
                 className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
               >
-                Minta Kode OTP Login <ArrowRight className="w-4 h-4 text-sky-300" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" /> Memverifikasi...
+                  </>
+                ) : (
+                  <>
+                    Minta Kode OTP Login <ArrowRight className="w-4 h-4 text-sky-300" />
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -298,7 +327,7 @@ export const LoginPage: React.FC = () => {
 
             {/* Simulation Notification Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center text-xs font-bold text-[#0B3C85]">
-              📩 Kode OTP simulasi Anda: <span className="font-mono text-base tracking-widest bg-white px-2 py-0.5 rounded border ml-1">{activeOtpCode}</span>
+              📩 Kode OTP Anda: <span className="font-mono text-base tracking-widest bg-white px-2 py-0.5 rounded border ml-1">{activeOtpCode}</span>
             </div>
 
             {loginError && (
@@ -337,11 +366,11 @@ export const LoginPage: React.FC = () => {
 
                 <button
                   type="button"
-                  disabled={timerSeconds > 0}
+                  disabled={timerSeconds > 0 || isLoading}
                   onClick={handleResendOtp}
                   className="text-[#0B3C85] font-bold hover:underline disabled:opacity-40 flex items-center gap-1"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Kirim Ulang
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Kirim Ulang
                 </button>
               </div>
 
