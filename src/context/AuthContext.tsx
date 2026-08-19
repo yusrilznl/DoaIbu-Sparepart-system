@@ -198,7 +198,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
 
-          setWhitelistUsers(mapped);
+          // Merge Supabase DB users with localStorage users so newly added users are NEVER lost on refresh
+          const localSaved = localStorage.getItem(LOCAL_STORAGE_WHITELIST_KEY);
+          let localUsers: WhitelistRecord[] = [];
+          if (localSaved) {
+            try { localUsers = JSON.parse(localSaved); } catch (e) {}
+          }
+
+          const mergedWhitelist = [...mapped];
+          localUsers.forEach(lu => {
+            if (!mergedWhitelist.some(m => m.email.toLowerCase() === lu.email.toLowerCase())) {
+              mergedWhitelist.push(lu);
+            }
+          });
+
+          setWhitelistUsers(mergedWhitelist);
+          localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(mergedWhitelist));
         }
       } catch (err) {
         console.warn('Supabase users fetch:', err);
@@ -677,6 +692,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addWhitelistUser = (newUser: Omit<WhitelistRecord, 'id' | 'registeredDate'>) => {
     const now = new Date();
     const regStr = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 5);
+    const cleanEmail = newUser.email.trim().toLowerCase();
 
     const isSuper = isSuperAdminRole(newUser.role);
     let defaultAllowed = ['dashboard', 'catalog', 'opname'];
@@ -686,15 +702,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const record: WhitelistRecord = {
       ...newUser,
+      email: cleanEmail,
       id: 'wl-' + Date.now(),
       registeredDate: regStr,
       allowedModules: newUser.allowedModules || defaultAllowed
     };
 
-    setWhitelistUsers(prev => [...prev, record]);
+    setWhitelistUsers(prev => {
+      const filtered = prev.filter(u => u.email.toLowerCase() !== cleanEmail);
+      const next = [record, ...filtered];
+      localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(next));
+      return next;
+    });
 
     const dbPayload = {
-      email: newUser.email.toLowerCase(),
+      email: cleanEmail,
       full_name: newUser.name,
       role: newUser.role,
       role_title: newUser.roleTitle,
@@ -702,51 +724,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password_hash: newUser.passwordHash || 'password123',
       allowed_modules: record.allowedModules
     };
-    supabase.from('users').insert([dbPayload]).then(({ error }) => {
-      if (error) console.error('Supabase insert user error:', error.message);
+
+    supabase.from('users').upsert([dbPayload], { onConflict: 'email' }).then(({ error }) => {
+      if (error) {
+        console.warn('Supabase upsert user notice:', error.message);
+        supabase.from('users').insert([dbPayload]).then(({ error: insertErr }) => {
+          if (insertErr) console.warn('Supabase insert user notice:', insertErr.message);
+        });
+      }
     });
   };
 
   const toggleUserStatus = (id: string) => {
     let targetUser: WhitelistRecord | undefined;
-    setWhitelistUsers(prev =>
-      prev.map(u => {
+    setWhitelistUsers(prev => {
+      const next = prev.map(u => {
         if (u.id === id) {
           targetUser = { ...u, status: u.status === 'AKTIF' ? 'NONAKTIF' : 'AKTIF' };
           return targetUser;
         }
         return u;
-      })
-    );
+      });
+      localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(next));
+      return next;
+    });
 
     if (targetUser) {
-      supabase.from('users').update({ status: targetUser.status }).eq('id', id).then(({ error }) => {
+      supabase.from('users').update({ status: targetUser.status }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
         if (error) console.error('Supabase status update error:', error.message);
       });
     }
   };
 
   const deleteWhitelistUser = (id: string) => {
-    setWhitelistUsers(prev => prev.filter(u => u.id !== id));
-    supabase.from('users').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('Supabase delete user error:', error.message);
+    let targetEmail = '';
+    setWhitelistUsers(prev => {
+      const target = prev.find(u => u.id === id);
+      if (target) targetEmail = target.email.toLowerCase();
+      const next = prev.filter(u => u.id !== id);
+      localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(next));
+      return next;
     });
+
+    if (targetEmail) {
+      supabase.from('users').delete().eq('email', targetEmail).then(({ error }) => {
+        if (error) console.error('Supabase delete user error:', error.message);
+      });
+    }
   };
 
   const updateUserPermissions = (userId: string, newAllowedModules: string[]) => {
     let targetUser: WhitelistRecord | undefined;
-    setWhitelistUsers(prev =>
-      prev.map(u => {
+    setWhitelistUsers(prev => {
+      const next = prev.map(u => {
         if (u.id === userId) {
           targetUser = { ...u, allowedModules: newAllowedModules };
           return targetUser;
         }
         return u;
-      })
-    );
+      });
+      localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(next));
+      return next;
+    });
 
     if (targetUser) {
-      supabase.from('users').update({ allowed_modules: newAllowedModules }).eq('id', userId).then(({ error }) => {
+      supabase.from('users').update({ allowed_modules: newAllowedModules }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
         if (error) console.error('Supabase permissions update error:', error.message);
       });
     }
