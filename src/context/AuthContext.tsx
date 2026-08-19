@@ -725,21 +725,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return next;
     });
 
-    const dbPayload = {
+    const coreDbPayload = {
       email: cleanEmail,
       full_name: newUser.name,
       role: newUser.role,
+    };
+
+    const extendedDbPayload = {
+      ...coreDbPayload,
       role_title: newUser.roleTitle,
       status: newUser.status || 'AKTIF',
       password_hash: newUser.passwordHash || 'password123',
-      allowed_modules: record.allowedModules
+      allowed_modules: JSON.stringify(record.allowedModules)
     };
 
-    supabase.from('users').upsert([dbPayload], { onConflict: 'email' }).then(({ error }) => {
+    supabase.from('users').upsert([extendedDbPayload], { onConflict: 'email' }).then(({ error }) => {
       if (error) {
-        console.warn('Supabase upsert user notice:', error.message);
-        supabase.from('users').insert([dbPayload]).then(({ error: insertErr }) => {
-          if (insertErr) console.warn('Supabase insert user notice:', insertErr.message);
+        console.warn('Supabase extended upsert notice:', error.message);
+        // Fallback to core payload if columns don't exist in DB schema
+        supabase.from('users').upsert([coreDbPayload], { onConflict: 'email' }).then(({ error: coreErr }) => {
+          if (coreErr) {
+            console.warn('Supabase core upsert notice:', coreErr.message);
+            supabase.from('users').insert([coreDbPayload]).then(({ error: insertErr }) => {
+              if (insertErr) console.error('Supabase insert user error:', insertErr.message);
+            });
+          }
         });
       }
     });
