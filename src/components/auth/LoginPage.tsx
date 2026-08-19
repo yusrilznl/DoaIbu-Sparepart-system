@@ -18,17 +18,15 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Credentials form - Default Owner Email yusrilznl@gmail.com
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>('yusrilznl@gmail.com');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [rememberMe, setRememberMe] = useState<boolean>(true);
 
   // CAPTCHA verification state
   const [isCaptchaVerified, setIsCaptchaVerified] = useState<boolean>(false);
 
   // OTP form state (6 digits)
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [activeOtpCode, setActiveOtpCode] = useState<string>('');
   const [timerSeconds, setTimerSeconds] = useState<number>(120);
   const [failedOtpAttempts, setFailedOtpAttempts] = useState<number>(0);
 
@@ -54,24 +52,22 @@ export const LoginPage: React.FC = () => {
     clearLoginErrors();
 
     if (!isCaptchaVerified) {
-      showToast('Silakan centang verifikasi CAPTCHA terlebih dahulu untuk membuktikan Anda bukan bot!', 'error');
+      showToast('Silakan centang verifikasi CAPTCHA terlebih dahulu!', 'error');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Panggil requestOtp dengan AWAIT karena bernilai Promise
       const res = await requestOtp(email, password);
 
-      if (res.success && res.otpCode && res.user) {
-        setActiveOtpCode(res.otpCode);
+      if (res.success && res.user) {
         setStep('OTP_INPUT');
         setTimerSeconds(120);
         setFailedOtpAttempts(0);
         setOtpDigits(['', '', '', '', '', '']);
 
-        showToast(`📩 Kode OTP Login Anda: ${res.otpCode}`, 'success');
+        showToast(`📩 Kode OTP 6-digit telah terkirim ke email ${email}. Silakan periksa Inbox Email Anda!`, 'success');
       }
     } catch (err) {
       console.error(err);
@@ -124,11 +120,10 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await requestOtp(email, password);
-      if (res.success && res.otpCode) {
-        setActiveOtpCode(res.otpCode);
+      if (res.success) {
         setTimerSeconds(120);
         setOtpDigits(['', '', '', '', '', '']);
-        showToast(`📩 Kode OTP Baru Anda: ${res.otpCode}`, 'success');
+        showToast(`📩 Kode OTP Baru telah terkirim ke Inbox Email ${email}!`, 'success');
       }
     } catch (err) {
       console.error(err);
@@ -264,7 +259,7 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* CAPTCHA Verification Box (Turnstile / reCAPTCHA v2 Simulation) */}
+              {/* CAPTCHA Verification Box */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
                 <label
                   onClick={() => !isLoading && setIsCaptchaVerified(!isCaptchaVerified)}
@@ -296,7 +291,7 @@ export const LoginPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    Minta Kode OTP Login <ArrowRight className="w-4 h-4 text-sky-300" />
+                    Kirim Kode OTP ke Email Inbox <ArrowRight className="w-4 h-4 text-sky-300" />
                   </>
                 )}
               </button>
@@ -316,18 +311,18 @@ export const LoginPage: React.FC = () => {
 
             <div className="text-center space-y-1">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center mx-auto mb-2">
-                <KeyRound className="w-6 h-6" />
+                <Mail className="w-6 h-6" />
               </div>
-              <h3 className="font-extrabold text-black text-base">Verifikasi Kode OTP Email</h3>
+              <h3 className="font-extrabold text-black text-base">Verifikasi OTP Email</h3>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Kode OTP 6-digit telah dikirim ke inbox email: <br />
-                <strong className="text-slate-900 font-mono">{email}</strong>
+                Kode OTP 6-digit telah dikirimkan langsung ke Inbox Email Anda: <br />
+                <strong className="text-slate-900 font-mono text-xs">{email}</strong>
               </p>
             </div>
 
-            {/* Simulation Notification Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center text-xs font-bold text-[#0B3C85]">
-              📩 Kode OTP Anda: <span className="font-mono text-base tracking-widest bg-white px-2 py-0.5 rounded border ml-1">{activeOtpCode}</span>
+            {/* Email Inbox Notice */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center text-xs font-bold text-emerald-800">
+              📩 Buka inbox email Anda untuk melihat 6-digit kode OTP keamanan.
             </div>
 
             {loginError && (
@@ -370,7 +365,7 @@ export const LoginPage: React.FC = () => {
                   onClick={handleResendOtp}
                   className="text-[#0B3C85] font-bold hover:underline disabled:opacity-40 flex items-center gap-1"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Kirim Ulang
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Kirim Ulang OTP
                 </button>
               </div>
 
@@ -379,14 +374,9 @@ export const LoginPage: React.FC = () => {
                 type="submit"
                 className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
               >
-                Verifikasi & Masuk Gudang <ArrowRight className="w-4 h-4 text-sky-300" />
+                Verifikasi OTP & Masuk Gudang <ArrowRight className="w-4 h-4 text-sky-300" />
               </button>
             </form>
-
-            {/* Email Service Simulator Backup Banner */}
-            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-[10px] font-semibold text-slate-500">
-              📩 [Email Service Simulator] OTP Terkirim ke <strong className="text-black">{email}</strong>: <span className="font-mono font-black text-slate-900">{activeOtpCode}</span>
-            </div>
           </div>
         )}
 

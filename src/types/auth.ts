@@ -23,8 +23,14 @@ export interface WhitelistUser {
   profile: UserProfile;
 }
 
+export const isSuperAdminRole = (role?: string): boolean => {
+  if (!role) return false;
+  const r = role.toUpperCase();
+  return r === 'SUPER_ADMIN' || r === 'OWNER' || r === 'DEPUTI_DIREKTUR';
+};
+
 export const ROLE_LABELS: Record<UserRole, string> = {
-  SUPER_ADMIN: 'Super Admin (Akses Penuh System)',
+  SUPER_ADMIN: 'Super Admin (Deputi Direktur)',
   OWNER: 'Owner (Pemilik Toko/Perusahaan)',
   DEPUTI_DIREKTUR: 'Deputi Direktur',
   ADMIN_GUDANG: 'Admin Kepala Gudang',

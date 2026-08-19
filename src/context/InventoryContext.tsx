@@ -15,7 +15,7 @@ export interface Warehouse {
 const DEFAULT_WAREHOUSES: Warehouse[] = [
   { id: 'w-1', code: 'MGL-01', name: 'Gudang Utama Magelang', address: 'Jl. Raya Magelang - Jogja KM 7, Secang, Magelang', totalRak: 12 },
   { id: 'w-2', code: 'SMG-02', name: 'Gudang Transit Semarang', address: 'Kawasan Industri Terboyo Blok B-12, Semarang', totalRak: 6 },
-  { id: 'w-3', code: 'BRN-03', name: 'Gudang Site Mining Borneo', address: 'Site Project Tambang Sangatta, East Kalimantan', totalRak: 8 }
+  { id: 'w-[#0B3C85]', code: 'BRN-03', name: 'Gudang Site Mining Borneo', address: 'Site Project Tambang Sangatta, East Kalimantan', totalRak: 8 }
 ];
 
 interface ToastState {
@@ -38,6 +38,7 @@ interface InventoryContextType {
   updateSparePart: (id: string, partData: Omit<SparePart, 'id'>) => SparePart;
   deleteSparePart: (id: string) => void;
   saveTransaction: (transactionData: Omit<Transaction, 'id' | 'createdDate'>) => Transaction;
+  deleteTransaction: (id: string) => void;
   recordStockOpname: (opnameItems: OpnameItem[], warehouseName: string, notes?: string) => void;
   recordLocationMutation: (mutation: Omit<LocationMutation, 'id' | 'timestamp'>) => void;
   logActivity: (action: ActivityAction, detail: string, opts?: { targetId?: string; targetLabel?: string; sebelum?: string; sesudah?: string; modul?: string }) => void;
@@ -68,7 +69,8 @@ const mapDbToSparePart = (row: any): SparePart => ({
   satuan: row.satuan || 'PCS',
   hargaBeli: Number(row.harga_beli ?? row.hargaBeli ?? 0),
   hargaJual: Number(row.harga_jual ?? row.hargaJual ?? 0),
-  nomorPartPabrikan: row.nomor_part_pabrikan || row.nomorPartPabrikan,
+  nomorPartPabrikan: row.nomor_part_pabrikan || row.nomorPartPabrikan || row.oemNumber,
+  oemNumber: row.oem_number || row.oemNumber || row.nomor_part_pabrikan,
   terakhirDiupdate: row.terakhir_diupdate || row.terakhirDiupdate || new Date().toISOString(),
   deskripsi: row.deskripsi || '',
   status: row.status || 'AKTIF',
@@ -77,11 +79,10 @@ const mapDbToSparePart = (row: any): SparePart => ({
     : (row.gambar ? JSON.parse(row.gambar) : []),
 } as unknown as SparePart);
 
-// 2. Mapping React State -> DB (dengan Fallback Default agar tidak ada Null Constraint Error)
+// 2. Mapping React State -> DB
 const mapSparePartToDb = (part: any) => {
-  // Tangkap gambar baik dari fotoProduk maupun array gambar
   const imageSource = part.fotoProduk || part.gambar || [];
-  
+
   const gambarData = Array.isArray(imageSource)
     ? JSON.stringify(imageSource)
     : (typeof imageSource === 'string' && imageSource ? JSON.stringify([imageSource]) : '[]');
@@ -116,12 +117,13 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   const auth = useAuth();
 
   const [parts, setParts] = useState<SparePart[]>(() => {
-  const localData = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
-  return localData ? JSON.parse(localData) : INITIAL_SPAREPARTS;
-});
+    const localData = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
+    return localData ? JSON.parse(localData) : INITIAL_SPAREPARTS;
+  });
   const [isLoaded, setIsLoaded] = useState(false);
 
-useEffect(() => {
+  // Load Parts from Supabase DB on Mount
+  useEffect(() => {
     const loadParts = async () => {
       let currentLocal: SparePart[] = [];
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
@@ -149,7 +151,7 @@ useEffect(() => {
         console.error('Supabase fetch failed:', e);
       }
 
-      // Fallback jika Supabase kosong/gagal
+      // Fallback jika Supabase DB belum ada baris
       if (currentLocal.length > 0) {
         setParts(currentLocal);
       } else {
@@ -172,29 +174,43 @@ useEffect(() => {
     return INITIAL_TRANSACTIONS;
   });
 
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVITY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error('Failed to parse activity logs', e); }
-    }
-    return [];
-  });
+  // Fetch Transactions from Supabase DB on Mount
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        const { data, error } = await supabase.from('transactions').select('*');
+        if (!error && data) {
+          const mappedTx: Transaction[] = data.map((t: any) => ({
+            id: String(t.id),
+            noTransaksi: t.no_transaksi || t.noTransaksi || '',
+            tanggal: t.tanggal || t.created_at || '',
+            jenisTransaksi: t.jenis_transaksi || t.jenisTransaksi || 'MUTASI_MASUK',
+            salesChannel: t.sales_channel || t.salesChannel || 'OFFLINE_STORE',
+            gudangAsal: t.gudang_asal || t.gudangAsal || 'Gudang Utama Magelang',
+            pelanggan: t.pelanggan || '-',
+            salesPerson: t.sales_person || t.salesPerson || '-',
+            items: typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []),
+            totalKuantitasItem: Number(t.total_kuantitas_item ?? t.totalKuantitasItem ?? 0),
+            totalJumlahTerima: Number(t.total_jumlah_terima ?? t.totalJumlahTerima ?? 0),
+            totalNilaiHpp: Number(t.total_nilai_hpp ?? t.totalNilaiHpp ?? 0),
+            totalNilaiJual: Number(t.total_nilai_jual ?? t.totalNilaiJual ?? 0),
+            notes: t.notes || '',
+            createdDate: t.created_date || t.createdDate || t.tanggal || ''
+          }));
+          setTransactions(mappedTx);
+          localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(mappedTx));
+        }
+      } catch (e) {
+        console.error('Failed to load transactions from Supabase:', e);
+      }
+    };
 
-  const [discrepancyLogs, setDiscrepancyLogs] = useState<DiscrepancyLog[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_DISCREPANCY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error('Failed to parse discrepancy logs', e); }
-    }
-    return [];
-  });
+    loadTransactions();
+  }, []);
 
-  const [locationMutations, setLocationMutations] = useState<LocationMutation[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_LOCATION);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error('Failed to parse location mutations', e); }
-    }
-    return [];
-  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [discrepancyLogs, setDiscrepancyLogs] = useState<DiscrepancyLog[]>([]);
+  const [locationMutations, setLocationMutations] = useState<LocationMutation[]>([]);
 
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'info', visible: false });
 
@@ -205,18 +221,6 @@ useEffect(() => {
   useEffect(() => {
     if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(transactions));
   }, [transactions, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVITY, JSON.stringify(activityLogs));
-  }, [activityLogs, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_DISCREPANCY, JSON.stringify(discrepancyLogs));
-  }, [discrepancyLogs, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_LOCATION, JSON.stringify(locationMutations));
-  }, [locationMutations, isLoaded]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, visible: true });
@@ -264,7 +268,7 @@ useEffect(() => {
     if (existingId) {
       const prevPart = parts.find(p => p.id === existingId);
       const updatedPart = { ...partData, id: existingId, terakhirDiupdate: nowStr } as SparePart;
-      
+
       const nextParts = parts.map(p => (p.id === existingId ? updatedPart : p));
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
@@ -278,7 +282,6 @@ useEffect(() => {
         { targetId: existingId, targetLabel: partData.kodeItem, sebelum: JSON.stringify({ stok: stokSebelum }), sesudah: JSON.stringify({ stok: stokSesudah }), modul: 'catalog' }
       );
 
-      // Payload untuk Supabase Update
       const dbPayload = mapSparePartToDb(updatedPart);
       if (isNaN(Number(dbPayload.id))) {
         delete dbPayload.id;
@@ -298,10 +301,9 @@ useEffect(() => {
 
       return updatedPart;
     } else {
-      // Buat ID numerik murni dari timestamp Unix
       const numericId = Date.now();
       const newPart = { ...partData, id: String(numericId), terakhirDiupdate: nowStr } as SparePart;
-      
+
       const nextParts = [newPart, ...parts];
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
@@ -312,9 +314,8 @@ useEffect(() => {
         { targetId: newPart.id, targetLabel: newPart.kodeItem, modul: 'catalog' }
       );
 
-      // Payload untuk Supabase Insert
       const dbPayload = mapSparePartToDb(newPart);
-      dbPayload.id = numericId; // Kirim ID sebagai Number agar tidak Not-Null Constraint di Supabase
+      dbPayload.id = numericId;
 
       supabase.from('products').insert([dbPayload]).select().then(({ data, error }) => {
         if (error) {
@@ -361,7 +362,7 @@ useEffect(() => {
   const deleteSparePart = (id: string) => {
     const part = parts.find(p => p.id === id);
     const nextParts = parts.filter(p => p.id !== id);
-    
+
     setParts(nextParts);
     localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
 
@@ -410,6 +411,26 @@ useEffect(() => {
 
     setTransactions(prev => [newTx, ...prev]);
 
+    // Insert to Supabase DB `transactions` table
+    supabase.from('transactions').insert([{
+      no_transaksi: newTx.noTransaksi,
+      tanggal: newTx.tanggal,
+      jenis_transaksi: newTx.jenisTransaksi,
+      sales_channel: newTx.salesChannel || 'OFFLINE_STORE',
+      gudang_asal: newTx.gudangAsal,
+      pelanggan: newTx.pelanggan,
+      sales_person: newTx.salesPerson,
+      items: JSON.stringify(newTx.items),
+      total_kuantitas_item: newTx.totalKuantitasItem,
+      total_jumlah_terima: newTx.totalJumlahTerima,
+      total_nilai_hpp: newTx.totalNilaiHpp,
+      total_nilai_jual: newTx.totalNilaiJual,
+      notes: newTx.notes || '',
+      created_date: newTx.createdDate
+    }]).then(({ error }) => {
+      if (error) console.error('Supabase transaction insert error:', error.message);
+    });
+
     const actionMap: Record<string, ActivityAction> = {
       MUTASI_MASUK: 'BARANG_MASUK',
       MUTASI_KELUAR: 'BARANG_KELUAR',
@@ -429,6 +450,27 @@ useEffect(() => {
     return newTx;
   };
 
+  const deleteTransaction = (id: string) => {
+    const txToDelete = transactions.find(t => t.id === id);
+    if (!txToDelete) return;
+
+    const nextTx = transactions.filter(t => t.id !== id);
+    setTransactions(nextTx);
+    localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(nextTx));
+
+    logActivity(
+      'HAPUS_ITEM',
+      `${auth?.currentUser?.name || 'User'} membatalkan/menghapus transaksi ${txToDelete.noTransaksi} (${txToDelete.jenisTransaksi})`,
+      { targetId: id, targetLabel: txToDelete.noTransaksi, modul: 'reports' }
+    );
+
+    showToast(`Transaksi ${txToDelete.noTransaksi} berhasil dibatalkan & dihapus!`, 'info');
+
+    supabase.from('transactions').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Supabase delete transaction error:', error.message);
+    });
+  };
+
   const recordStockOpname = (opnameItems: OpnameItem[], warehouseName: string, notes?: string) => {
     const now = new Date();
     const nowStr = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 5);
@@ -439,7 +481,7 @@ useEffect(() => {
         const opItem = opnameItems.find(i => i.partId === part.id);
         if (!opItem) return part;
         const targetPhysical = opItem.stokFisik !== undefined ? opItem.stokFisik : (opItem.stokFisikHitung !== undefined ? opItem.stokFisikHitung : part.stokRealtime);
-        
+
         const updatedPart = { ...part, stokRealtime: targetPhysical, terakhirDiupdate: nowStr };
 
         const dbPayload = mapSparePartToDb(updatedPart);
@@ -523,7 +565,7 @@ useEffect(() => {
     setParts(prev => prev.map(p => {
       if (p.id === mutationData.partId) {
         const updatedPart = { ...p, lokasiRak: mutationData.keLokasi, terakhirDiupdate: nowStr };
-        
+
         const dbPayload = mapSparePartToDb(updatedPart);
         supabase.from('products').upsert([dbPayload]).then(({ error }) => {
           if (error) console.error('Supabase location update error:', error.message);
@@ -560,6 +602,7 @@ useEffect(() => {
         updateSparePart,
         deleteSparePart,
         saveTransaction,
+        deleteTransaction,
         recordStockOpname,
         recordLocationMutation,
         logActivity,

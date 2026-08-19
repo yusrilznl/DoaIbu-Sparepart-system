@@ -27,8 +27,8 @@ const MODUL_OPTIONS = ['semua', 'catalog', 'inbound', 'outbound', 'opname', 'sec
 const SAMPLE_LOGS: ActivityLog[] = [
   {
     id: 'act-sample-1', timestamp: '2026-08-14 09:15:42',
-    userId: 'wl-owner-yusril', userName: 'Yusril Zainal (Owner)', userEmail: 'yusrilznl@gmail.com', userRole: 'SUPER_ADMIN',
-    action: 'TAMBAH_ITEM', targetId: 'part-001', targetLabel: 'LF3349', detail: 'Yusril Zainal (Owner) menambahkan item baru LF3349 (Filter Oil Kubota)', modul: 'catalog'
+    userId: 'wl-owner-yusril', userName: 'Yusril Zainal (Deputi Direktur)', userEmail: 'yusrilznl@gmail.com', userRole: 'SUPER_ADMIN',
+    action: 'TAMBAH_ITEM', targetId: 'part-001', targetLabel: 'LF3349', detail: 'Yusril Zainal (Deputi Direktur) menambahkan item baru LF3349 (Filter Oil Kubota)', modul: 'catalog'
   },
   {
     id: 'act-sample-2', timestamp: '2026-08-14 10:02:18',
@@ -54,8 +54,8 @@ const SAMPLE_LOGS: ActivityLog[] = [
   },
   {
     id: 'act-sample-6', timestamp: '2026-08-14 15:22:33',
-    userId: 'wl-owner-yusril', userName: 'Yusril Zainal (Owner)', userEmail: 'yusrilznl@gmail.com', userRole: 'SUPER_ADMIN',
-    action: 'BARANG_KELUAR', targetId: 'tx-002', targetLabel: 'SJ-OUT-20260814-301', detail: 'Yusril Zainal (Owner) mencatat transaksi SJ-OUT-20260814-301 (MUTASI_KELUAR) — 2 item', modul: 'outbound'
+    userId: 'wl-owner-yusril', userName: 'Yusril Zainal (Deputi Direktur)', userEmail: 'yusrilznl@gmail.com', userRole: 'SUPER_ADMIN',
+    action: 'BARANG_KELUAR', targetId: 'tx-002', targetLabel: 'SJ-OUT-20260814-301', detail: 'Yusril Zainal (Deputi Direktur) mencatat transaksi SJ-OUT-20260814-301 (MUTASI_KELUAR) — 2 item', modul: 'outbound'
   },
 ];
 

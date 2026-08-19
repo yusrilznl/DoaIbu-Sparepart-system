@@ -3,6 +3,7 @@ import { SparePart, Transaction } from '../types/inventory';
 export const DEFAULT_FILTER_PHOTO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230b3c85"/><circle cx="50" cy="50" r="30" fill="%23ffffff" opacity="0.2"/><path d="M30 40 L70 40 L60 65 L40 65 Z" fill="%23ffffff"/><text x="50" y="85" font-family="sans-serif" font-size="10" fill="%23ffffff" font-weight="bold" text-anchor="middle">FLEETGUARD</text></svg>';
 export const DEFAULT_ENGINE_PHOTO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%231e293b"/><rect x="25" y="25" width="50" height="50" rx="8" fill="%23f59e0b"/><text x="50" y="55" font-family="sans-serif" font-size="12" fill="%23000000" font-weight="bold" text-anchor="middle">PARTS</text></svg>';
 
+// Master Spareparts (Kept 100% Intact as user-entered catalog data)
 export const INITIAL_SPAREPARTS: SparePart[] = [
   {
     id: 'part-1',
@@ -196,75 +197,5 @@ export const INITIAL_SPAREPARTS: SparePart[] = [
   }
 ];
 
-export const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-101',
-    noTransaksi: 'TR-OUT-20260812-001',
-    tanggal: '2026-08-12 14:30',
-    jenisTransaksi: 'MUTASI_KELUAR',
-    salesChannel: 'OFFLINE_STORE',
-    gudangAsal: 'Gudang Utama Magelang',
-    pelanggan: 'PT Fardan Utama Niaga Site Workshop Project A',
-    salesPerson: 'Budi Santoso',
-    items: [
-      {
-        id: 'li-1',
-        partId: 'part-1',
-        kodeItem: 'FS1280',
-        namaSparepart: 'Water Separator Fuel Filter Fleetguard',
-        brand: 'FLEETGUARD',
-        lokasiRak: 'A-01-01',
-        stokTersedia: 20,
-        jumlahKirim: 2,
-        jumlahTerima: 2,
-        satuan: 'PCS',
-        hargaBeli: 145000,
-        hargaJual: 215000,
-        hargaMarketplace: 235000,
-        fotoProduk: DEFAULT_FILTER_PHOTO,
-        keteranganStatus: 'Segel Baru & Siap Pakai'
-      }
-    ],
-    totalKuantitasItem: 1,
-    totalJumlahTerima: 2,
-    totalNilaiHpp: 290000,
-    totalNilaiJual: 430000,
-    notes: 'Pengeluaran rutin perbaikan berkala unit Excavator Site A.',
-    createdDate: '2026-08-12 14:30'
-  },
-  {
-    id: 'tx-102',
-    noTransaksi: 'TR-IN-20260811-002',
-    tanggal: '2026-08-11 10:15',
-    jenisTransaksi: 'MUTASI_MASUK',
-    salesChannel: 'OFFLINE_STORE',
-    gudangAsal: 'Gudang Utama Magelang',
-    pelanggan: 'PT Fleetguard Indonesia Utama',
-    salesPerson: 'Agus Subekti',
-    items: [
-      {
-        id: 'li-2',
-        partId: 'part-2',
-        kodeItem: 'LF3349',
-        namaSparepart: 'Lube Oil Filter Heavy Duty Fleetguard',
-        brand: 'FLEETGUARD',
-        lokasiRak: 'A-01-02',
-        stokTersedia: 14,
-        jumlahKirim: 10,
-        jumlahTerima: 10,
-        satuan: 'PCS',
-        hargaBeli: 185000,
-        hargaJual: 275000,
-        hargaMarketplace: 299000,
-        fotoProduk: DEFAULT_FILTER_PHOTO,
-        keteranganStatus: 'Restock Penerimaan Resmi'
-      }
-    ],
-    totalKuantitasItem: 1,
-    totalJumlahTerima: 10,
-    totalNilaiHpp: 1850000,
-    totalNilaiJual: 2750000,
-    notes: 'Restock stok pengadaan resmi dari supplier utama.',
-    createdDate: '2026-08-11 10:15'
-  }
-];
+// Cleaned up dummy transactions for live production start (0 transactions by default)
+export const INITIAL_TRANSACTIONS: Transaction[] = [];

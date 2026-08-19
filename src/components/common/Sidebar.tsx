@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, ArrowUpRight, ArrowDownToLine, ClipboardCheck, FileText, X, ShieldCheck, Search, Bell, LogOut, Eye, EyeOff, User, Activity } from 'lucide-react';
+import { LayoutDashboard, Package, ArrowUpRight, ArrowDownToLine, ClipboardCheck, FileText, X, ShieldCheck, LogOut, Eye, EyeOff, Activity } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { isSuperAdminRole } from '../../types/auth';
 import { DoaIbuLogo } from './DoaIbuLogo';
 
 interface SidebarProps {
@@ -25,6 +26,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const lowStockCount = parts.filter(p => p.stokRealtime <= p.stokMin).length;
   const suspiciousCount = securityLogs.filter(l => l.isSuspicious).length;
 
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { id: 'catalog', label: 'Master Sparepart & Rak', icon: Package, badge: parts.length },
@@ -32,25 +35,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'inbound', label: 'Barang Masuk (Restock)', icon: ArrowDownToLine },
     { id: 'opname', label: 'Stock Opname & Scanner', icon: ClipboardCheck, badge: lowStockCount > 0 ? `${lowStockCount} Alert` : undefined, isBadgeWarning: lowStockCount > 0 },
     { id: 'reports', label: 'Laporan Mutasi & Keuangan', icon: FileText },
-    { id: 'audit', label: 'Audit Trail & Activity Log', icon: Activity, isAuditOnly: true },
+    { id: 'audit_log', label: 'Audit Trail & Activity Log', icon: Activity, isAuditOnly: true },
     { id: 'security', label: 'Keamanan & Akses Email', icon: ShieldCheck, badge: suspiciousCount > 0 ? `${suspiciousCount} Alert` : undefined, isBadgeWarning: suspiciousCount > 0, isSuperAdminOnly: true }
   ];
 
-  // Dynamic Menu Filtering based on User Allowed Modules & Super Admin Security Check
+  // Dynamic Menu Filtering based on User Allowed Modules & Super Admin Category Check
   const menuItems = allMenuItems.filter(item => {
-    // 1. Security tab is STRICTLY for Super Admin
-    if (item.isSuperAdminOnly && currentUser?.role !== 'SUPER_ADMIN') {
+    // 1. Security tab is STRICTLY for Super Admin Category (Super Admin, Owner, Deputi Direktur)
+    if (item.isSuperAdminOnly && !isSuperAdminCategory) {
       return false;
     }
 
-    // 2. Audit tab is for SUPER_ADMIN and AUDITOR only
-    if ((item as any).isAuditOnly && currentUser?.role !== 'SUPER_ADMIN' && currentUser?.role !== 'AUDITOR') {
+    // 2. Audit tab is for Super Admin Category and AUDITOR
+    if ((item as any).isAuditOnly && !isSuperAdminCategory && currentUser?.role !== 'AUDITOR') {
       return false;
     }
 
-    // 3. Filter allowed modules configured by Super Admin
+    // 3. Super Admin Category gets full access
+    if (isSuperAdminCategory) {
+      return true;
+    }
+
+    // 4. Filter allowed modules configured for other roles
     if (currentUser?.allowedModules && currentUser.allowedModules.length > 0) {
-      return currentUser.allowedModules.includes(item.id);
+      return currentUser.allowedModules.includes(item.id) || (item.id === 'audit_log' && currentUser.allowedModules.includes('audit'));
     }
 
     return true;
@@ -62,15 +70,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onCloseMobile();
     }
   };
-
-  const handleMobileSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mobileSearch.trim()) {
-      handleSelectTab('catalog');
-    }
-  };
-
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   // Professional avatar fallback URL
   const userPhotoUrl = currentUser?.email === 'yusrilznl@gmail.com'
@@ -94,8 +93,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Mobile Owner Eye Privacy Toggle */}
-        {isSuperAdmin && (
+        {/* Mobile Super Admin Eye Privacy Toggle */}
+        {isSuperAdminCategory && (
           <div className="lg:hidden">
             <button
               onClick={toggleFinancialPrivacy}
@@ -122,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-1">
             {menuItems.map(item => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive = activeTab === item.id || (item.id === 'audit_log' && activeTab === 'audit');
 
               return (
                 <button
@@ -193,21 +192,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Permanent Sidebar (lg:block min-w 1024px) */}
+      {/* Desktop Permanent Sidebar */}
       <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 shrink-0 hidden lg:block shadow-2xs transition-all duration-300">
         {renderContent}
       </aside>
 
-      {/* Mobile / Tablet Slide-over Drawer Overlay (lg:hidden max-w 1023px) */}
+      {/* Mobile Drawer Overlay */}
       {isOpenMobile && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          {/* Dark Backdrop Overlay */}
           <div
             onClick={onCloseMobile}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
           />
 
-          {/* Slide Drawer Content */}
           <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl z-10 flex flex-col animate-in slide-in-from-left duration-200">
             {renderContent}
           </div>

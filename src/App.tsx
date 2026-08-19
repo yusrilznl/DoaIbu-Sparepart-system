@@ -13,11 +13,11 @@ import { InboundTransactionForm } from './components/transactions/InboundTransac
 import { StockOpnameModule } from './components/opname/StockOpnameModule';
 import { ReportsModule } from './components/reports/ReportsModule';
 import { SecurityMonitoring } from './components/security/SecurityMonitoring';
-import { AuditLogModule } from './components/security/AuditLogModule';
 import { BarcodeScannerModal } from './components/common/BarcodeScannerModal';
 import { ItemDetailDrawer } from './components/catalog/ItemDetailDrawer';
 import { DraggableCameraFab } from './components/common/DraggableCameraFab';
 import { SparePart } from './types/inventory';
+import { isSuperAdminRole } from './types/auth';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, currentUser } = useAuth();
@@ -34,23 +34,33 @@ const AppContent: React.FC = () => {
     return <LoginPage />;
   }
 
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+
   const handleNavigate = (tab: string, partId?: string) => {
-    if (tab === 'security' && currentUser?.role !== 'SUPER_ADMIN') {
-      showToast('Akses Ditolak: Halaman Keamanan hanya dapat dikelola oleh Super Admin.', 'error');
+    // 1. Security Check
+    if (tab === 'security' && !isSuperAdminCategory) {
+      showToast('Akses Ditolak: Modul Keamanan hanya dapat dikelola oleh Super Admin, Owner, dan Deputi Direktur.', 'error');
       setActiveTab('dashboard');
       return;
     }
 
-    if (tab === 'audit' && currentUser?.role !== 'SUPER_ADMIN' && currentUser?.role !== 'AUDITOR') {
-      showToast('Akses Ditolak: Modul Audit Log hanya untuk Super Admin dan Auditor.', 'error');
+    // 2. Audit Trail & Activity Log Check (SUPER_ADMIN, OWNER, DEPUTI_DIREKTUR, AUDITOR)
+    if ((tab === 'audit_log' || tab === 'audit') && !isSuperAdminCategory && currentUser?.role !== 'AUDITOR') {
+      showToast('Akses Ditolak: Modul Audit Log hanya untuk Super Admin, Owner, Deputi Direktur, dan Auditor.', 'error');
       setActiveTab('dashboard');
       return;
     }
 
-    if (currentUser?.allowedModules && currentUser.allowedModules.length > 0 && !currentUser.allowedModules.includes(tab)) {
-      showToast(`Akses Ditolak: Anda tidak memiliki izin untuk membuka modul ${tab}.`, 'error');
-      setActiveTab('dashboard');
-      return;
+    // 3. Module Permissions Check
+    if (currentUser?.allowedModules && currentUser.allowedModules.length > 0 && !isSuperAdminCategory) {
+      const isAllowed = currentUser.allowedModules.includes(tab) ||
+        ((tab === 'audit_log' || tab === 'audit') && currentUser.allowedModules.includes('audit'));
+
+      if (!isAllowed) {
+        showToast(`Akses Ditolak: Anda tidak memiliki izin untuk membuka modul ${tab}.`, 'error');
+        setActiveTab('dashboard');
+        return;
+      }
     }
 
     setActiveTab(tab);
@@ -124,12 +134,14 @@ const AppContent: React.FC = () => {
           {activeTab === 'opname' && <StockOpnameModule />}
           {activeTab === 'reports' && <ReportsModule />}
 
-          {activeTab === 'security' && currentUser?.role === 'SUPER_ADMIN' && (
-            <SecurityMonitoring />
+          {/* Module Security Center (Tab 1: Whitelist & Matriks Akses) */}
+          {activeTab === 'security' && isSuperAdminCategory && (
+            <SecurityMonitoring defaultTab="WHITELIST" />
           )}
 
-          {activeTab === 'audit' && (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'AUDITOR') && (
-            <AuditLogModule />
+          {/* Module Audit Trail & Activity Log (Tab 3: Security Audit Logs) */}
+          {(activeTab === 'audit_log' || activeTab === 'audit') && (isSuperAdminCategory || currentUser?.role === 'AUDITOR') && (
+            <SecurityMonitoring defaultTab="AUDIT_LOGS" />
           )}
         </main>
       </div>
@@ -161,7 +173,6 @@ const AppContent: React.FC = () => {
 
 export function App() {
   return (
-    // AuthProvider MUST be outermost — InventoryContext uses useAuth() internally
     <AuthProvider>
       <InventoryProvider>
         <AppContent />

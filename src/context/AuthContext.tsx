@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole } from '../types/auth';
+import { UserProfile, UserRole, isSuperAdminRole } from '../types/auth';
 import { WhitelistRecord, SecurityAuditLog, ActiveOtpLog } from '../types/security';
-import { supabase } from '../lib/supabaseClient'; // Import client Supabase
+import { supabase } from '../lib/supabaseClient';
 
 const ALL_MODULES = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security', 'audit'];
 const AUDITOR_MODULES = ['dashboard', 'reports', 'audit'];
@@ -10,24 +10,35 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
   {
     id: 'wl-owner-yusril',
     email: 'yusrilznl@gmail.com',
-    name: 'Yusril Zainal (Owner)',
+    name: 'Yusril Zainal',
     role: 'SUPER_ADMIN',
-    roleTitle: 'Owner / Super Admin',
+    roleTitle: 'Super Admin (Deputi Direktur)',
     status: 'AKTIF',
     registeredDate: '2026-01-01 08:00',
     passwordHash: 'password123',
-    allowedModules: ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security']
+    allowedModules: ALL_MODULES
   },
   {
     id: 'wl-1',
     email: 'owner@doaibusparepart.com',
     name: 'Owner Doa Ibu',
-    role: 'SUPER_ADMIN',
-    roleTitle: 'Owner / Super Admin',
+    role: 'OWNER',
+    roleTitle: 'Owner / Pemilik Toko',
     status: 'AKTIF',
     registeredDate: '2026-01-10 08:30',
     passwordHash: 'password123',
-    allowedModules: ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security']
+    allowedModules: ALL_MODULES
+  },
+  {
+    id: 'wl-deputi',
+    email: 'deputi@doaibusparepart.com',
+    name: 'Deputi Direktur Doa Ibu',
+    role: 'DEPUTI_DIREKTUR',
+    roleTitle: 'Deputi Direktur',
+    status: 'AKTIF',
+    registeredDate: '2026-01-15 08:30',
+    passwordHash: 'password123',
+    allowedModules: ALL_MODULES
   },
   {
     id: 'wl-2',
@@ -60,7 +71,7 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
     status: 'AKTIF',
     registeredDate: '2026-06-01 08:00',
     passwordHash: 'password123',
-    allowedModules: ['dashboard', 'reports', 'audit']
+    allowedModules: AUDITOR_MODULES
   }
 ];
 
@@ -86,12 +97,12 @@ interface AuthContextType {
   whitelistUsers: WhitelistRecord[];
   securityLogs: SecurityAuditLog[];
   activeOtps: ActiveOtpLog[];
-  isFinancialPrivacyEnabled: boolean; // Hide/Show price toggle state
+  isFinancialPrivacyEnabled: boolean;
   toggleFinancialPrivacy: () => void;
   login: (email: string, pass: string) => Promise<boolean>;
   requestOtp: (email: string, pass: string) => Promise<{ success: boolean; error?: string; user?: WhitelistRecord; otpCode?: string }>;
   verifyOtp: (email: string, inputOtp: string) => boolean;
-  updateUserPassword: (email: string, newPassword: string) => boolean;
+  updateUserPassword: (email: string, newPassword: string) => Promise<boolean>;
   logout: () => void;
   clearLoginErrors: () => void;
   addWhitelistUser: (newUser: Omit<WhitelistRecord, 'id' | 'registeredDate'>) => void;
@@ -103,6 +114,63 @@ interface AuthContextType {
 const LOCAL_STORAGE_AUTH_KEY = 'optipart_doaibu_auth_user_v7';
 const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v7';
 const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v7';
+
+const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
+  const role = (row.role || 'ADMIN_GUDANG') as UserRole;
+  const isSuper = isSuperAdminRole(role);
+  
+  let roleTitle = row.role_title || row.roleTitle || row.role;
+  if (row.email === 'yusrilznl@gmail.com') {
+    roleTitle = 'Super Admin (Deputi Direktur)';
+  } else if (!roleTitle || roleTitle === role) {
+    if (role === 'SUPER_ADMIN') roleTitle = 'Super Admin (Deputi Direktur)';
+    else if (role === 'OWNER') roleTitle = 'Owner / Pemilik Toko';
+    else if (role === 'DEPUTI_DIREKTUR') roleTitle = 'Deputi Direktur';
+    else if (role === 'ADMIN_GUDANG') roleTitle = 'Head Stock Admin Gudang';
+    else if (role === 'PETUGAS_GUDANG') roleTitle = 'Petugas Stock Opname & Scan';
+    else if (role === 'AUDITOR') roleTitle = 'Auditor Internal (Read-Only)';
+  }
+
+  let modules: string[] = ALL_MODULES;
+  if (row.allowed_modules || row.allowedModules) {
+    const raw = row.allowed_modules || row.allowedModules;
+    if (Array.isArray(raw)) modules = raw;
+    else if (typeof raw === 'string') {
+      try { modules = JSON.parse(raw); } catch (e) { modules = isSuper ? ALL_MODULES : ['dashboard', 'catalog', 'opname']; }
+    }
+  } else {
+    modules = isSuper ? ALL_MODULES : (role === 'AUDITOR' ? AUDITOR_MODULES : ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports']);
+  }
+
+  // Ensure super admin category has all modules
+  if (isSuper) {
+    modules = ALL_MODULES;
+  }
+
+  return {
+    id: String(row.id),
+    email: row.email,
+    name: row.full_name || row.name || (row.email === 'yusrilznl@gmail.com' ? 'Yusril Zainal' : 'User Gudang'),
+    role,
+    roleTitle,
+    status: (row.status || 'AKTIF') as 'AKTIF' | 'NONAKTIF',
+    registeredDate: row.registered_date || row.created_at || new Date().toISOString().substring(0, 16),
+    passwordHash: row.password_hash || row.passwordHash || 'password123',
+    allowedModules: modules
+  };
+};
+
+const mapDbRowToSecurityLog = (row: any): SecurityAuditLog => ({
+  id: String(row.id),
+  timestamp: row.timestamp || row.created_at || new Date().toISOString().substring(0, 19).replace('T', ' '),
+  emailAttempted: row.email_attempted || row.emailAttempted || row.email || '',
+  ipAddress: row.ip_address || row.ipAddress || '192.168.1.1',
+  deviceInfo: row.device_info || row.deviceInfo || 'Desktop Browser',
+  status: row.status || 'SUCCESS',
+  statusLabel: row.status_label || row.statusLabel || 'Audit Event',
+  isSuspicious: Boolean(row.is_suspicious ?? row.isSuspicious ?? false),
+  notes: row.notes || ''
+});
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -138,13 +206,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  // Eye Toggle State for Hide/Show Financial Figures
   const [isFinancialPrivacyEnabled, setIsFinancialPrivacyEnabled] = useState<boolean>(false);
-
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isUnregisteredEmail, setIsUnregisteredEmail] = useState<boolean>(false);
   const [unregisteredEmailInput, setUnregisteredEmailInput] = useState<string>('');
 
+  // 1. Fetch Users & Security Logs from Supabase DB on mount
+  useEffect(() => {
+    const fetchSupabaseData = async () => {
+      // Fetch users from Supabase
+      try {
+        const { data: dbUsers, error: usersErr } = await supabase.from('users').select('*');
+        if (!usersErr && dbUsers && dbUsers.length > 0) {
+          const mappedUsers = dbUsers.map(mapDbRowToWhitelist);
+          // Ensure yusrilznl@gmail.com is present with Super Admin (Deputi Direktur) role
+          let hasYusril = false;
+          const updated = mappedUsers.map(u => {
+            if (u.email.toLowerCase() === 'yusrilznl@gmail.com') {
+              hasYusril = true;
+              return {
+                ...u,
+                name: 'Yusril Zainal',
+                role: 'SUPER_ADMIN' as UserRole,
+                roleTitle: 'Super Admin (Deputi Direktur)',
+                allowedModules: ALL_MODULES
+              };
+            }
+            return u;
+          });
+          if (!hasYusril) {
+            updated.unshift(INITIAL_WHITELIST[0]);
+          }
+          setWhitelistUsers(updated);
+          localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch whitelist users from Supabase:', err);
+      }
+
+      // Fetch Security Logs from Supabase
+      try {
+        const { data: dbLogs, error: logsErr } = await supabase.from('security_logs').select('*').order('created_at', { ascending: false });
+        if (!logsErr && dbLogs && dbLogs.length > 0) {
+          const mappedLogs = dbLogs.map(mapDbRowToSecurityLog);
+          setSecurityLogs(mappedLogs);
+          localStorage.setItem(LOCAL_STORAGE_SECURITY_LOGS_KEY, JSON.stringify(mappedLogs));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch security logs from Supabase:', err);
+      }
+
+      // Restore Supabase Auth session if active
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session?.user?.email) {
+          const sessionEmail = sessionData.session.user.email.toLowerCase();
+          setWhitelistUsers(prev => {
+            const matched = prev.find(u => u.email.toLowerCase() === sessionEmail);
+            if (matched && !currentUser) {
+              const isSuper = isSuperAdminRole(matched.role);
+              setCurrentUser({
+                id: matched.id,
+                name: matched.name,
+                email: matched.email,
+                role: matched.role,
+                roleTitle: matched.roleTitle,
+                allowedModules: isSuper ? ALL_MODULES : (matched.allowedModules || ['dashboard', 'catalog', 'opname'])
+              });
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase getSession check:', err);
+      }
+    };
+
+    fetchSupabaseData();
+  }, []);
+
+  // Sync state changes to LocalStorage
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(whitelistUsers));
   }, [whitelistUsers]);
@@ -156,8 +297,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem(LOCAL_STORAGE_AUTH_KEY, JSON.stringify(currentUser));
-      // Non-super-admins automatically have financial privacy enabled (hidden HPP)
-      if (currentUser.role !== 'SUPER_ADMIN') {
+      // Non-super-admin category automatically has financial privacy enabled
+      if (!isSuperAdminRole(currentUser.role)) {
         setIsFinancialPrivacyEnabled(true);
       }
     } else {
@@ -194,6 +335,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setSecurityLogs(prev => [newLog, ...prev]);
+
+    // Async Insert to Supabase DB table 'security_logs'
+    supabase.from('security_logs').insert([{
+      email_attempted: emailAttempted,
+      ip_address: mockIP,
+      device_info: mockDevice,
+      status,
+      status_label: statusLabel,
+      is_suspicious: isSuspicious,
+      notes: notes || '',
+      timestamp: timestampStr
+    }]).then(({ error }) => {
+      if (error) console.warn('Supabase security_logs insert notice:', error.message);
+    });
   };
 
   const clearLoginErrors = () => {
@@ -207,18 +362,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = emailInput.trim().toLowerCase();
 
     try {
-      // 1. Verifikasi Password via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: passwordInput,
-      });
+      // 1. Check password using Supabase Auth or fallback matching
+      let authErrorMsg: string | null = null;
 
-      // 2. Cari user di state whitelist lokal
+      try {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: passwordInput,
+        });
+        if (authError) {
+          authErrorMsg = authError.message;
+        }
+      } catch (err: any) {
+        authErrorMsg = err.message;
+      }
+
       let matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
 
-      // Jika password di Supabase Auth gagal, tes fallback ke passwordHash di lokal jika akun mock/dev
-      if (authError) {
-        if (!matchedUser || matchedUser.passwordHash !== passwordInput) {
+      // Check password hash from local/whitelist fallback if Supabase Auth returned error
+      if (authErrorMsg) {
+        if (!matchedUser || (matchedUser.passwordHash && matchedUser.passwordHash !== passwordInput)) {
           const errorMsg = 'Email atau Password salah. Silakan periksa kembali!';
           setLoginError(errorMsg);
           addSecurityLog(
@@ -226,34 +389,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             'FAILED_WRONG_PASSWORD',
             'Password/Email Salah',
             true,
-            authError.message
+            authErrorMsg
           );
           return { success: false, error: errorMsg };
         }
       }
 
-      // Jika belum ada di state lokal, coba ambil data profilnya dari Supabase DB (tabel 'users')
+      // Fetch user from Supabase DB table 'users' if not in local whitelist
       if (!matchedUser) {
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', cleanEmail)
-          .single();
+        try {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-        if (dbUser) {
-          matchedUser = {
-            id: dbUser.id || (authData.user ? authData.user.id : 'wl-' + Date.now()),
-            email: dbUser.email,
-            name: dbUser.full_name || dbUser.name || 'User Gudang',
-            role: dbUser.role || 'ADMIN_GUDANG',
-            roleTitle: dbUser.role || 'Staf Gudang',
-            status: 'AKTIF',
-            registeredDate: dbUser.created_at || new Date().toISOString(),
-            passwordHash: passwordInput,
-            allowedModules: ['dashboard', 'catalog', 'opname', 'outbound', 'inbound']
-          };
-          // Masukkan ke state whitelist lokal
-          setWhitelistUsers(prev => [...prev, matchedUser!]);
+          if (dbUser) {
+            matchedUser = mapDbRowToWhitelist(dbUser);
+            setWhitelistUsers(prev => [...prev, matchedUser!]);
+          }
+        } catch (err) {
+          console.warn('Supabase users table query error:', err);
         }
       }
 
@@ -285,7 +441,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: errorMsg };
       }
 
-      // 3. Generate Kode OTP 6 digit
+      // Trigger Supabase OTP Email if available
+      try {
+        await supabase.auth.signInWithOtp({ email: cleanEmail });
+      } catch (otpErr) {
+        console.warn('Supabase OTP Email trigger notice:', otpErr);
+      }
+
+      // Generate 6-digit OTP code for verification
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       const now = new Date();
       const createdAt = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
@@ -322,7 +485,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
 
     if (!activeOtpEntry || activeOtpEntry.otpCode !== inputOtp.trim()) {
-      const errorMsg = 'Kode OTP yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa kembali.';
+      const errorMsg = 'Kode OTP yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email kembali.';
       setLoginError(errorMsg);
       addSecurityLog(
         cleanEmail,
@@ -337,13 +500,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
     if (!matchedUser) return false;
 
+    const isSuper = isSuperAdminRole(matchedUser.role);
     const userProfile: UserProfile = {
       id: matchedUser.id,
       name: matchedUser.name,
       email: matchedUser.email,
       role: matchedUser.role,
       roleTitle: matchedUser.roleTitle,
-      allowedModules: matchedUser.allowedModules || ['dashboard', 'catalog', 'opname']
+      allowedModules: isSuper ? ALL_MODULES : (matchedUser.allowedModules || ['dashboard', 'catalog', 'opname'])
     };
 
     setActiveOtps(prev => prev.map(o => o.id === activeOtpEntry.id ? { ...o, isUsed: true } : o));
@@ -361,7 +525,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const updateUserPassword = (emailInput: string, newPasswordInput: string): boolean => {
+  const updateUserPassword = async (emailInput: string, newPasswordInput: string): Promise<boolean> => {
     const cleanEmail = emailInput.trim().toLowerCase();
     const matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
 
@@ -373,6 +537,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setWhitelistUsers(prev =>
       prev.map(u => (u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: newPasswordInput } : u))
     );
+
+    // Update password in Supabase DB table 'users'
+    supabase.from('users').update({ password_hash: newPasswordInput }).eq('email', cleanEmail).then(({ error }) => {
+      if (error) console.warn('Supabase password update error:', error.message);
+    });
+
+    // Update password in Supabase Auth if session active
+    try {
+      await supabase.auth.updateUser({ password: newPasswordInput });
+    } catch (authErr) {
+      console.warn('Supabase auth updateUser notice:', authErr);
+    }
 
     const now = new Date();
     const timeStr = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
@@ -410,10 +586,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const now = new Date();
     const regStr = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 5);
 
+    const isSuper = isSuperAdminRole(newUser.role);
     let defaultAllowed = ['dashboard', 'catalog', 'opname'];
-    if (newUser.role === 'SUPER_ADMIN') defaultAllowed = ALL_MODULES;
+    if (isSuper) defaultAllowed = ALL_MODULES;
     else if (newUser.role === 'ADMIN_GUDANG') defaultAllowed = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports'];
-    else if ((newUser.role as string) === 'AUDITOR') defaultAllowed = AUDITOR_MODULES;
+    else if (newUser.role === 'AUDITOR') defaultAllowed = AUDITOR_MODULES;
 
     const record: WhitelistRecord = {
       ...newUser,
@@ -423,25 +600,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setWhitelistUsers(prev => [...prev, record]);
+
+    // Insert to Supabase DB table 'users'
+    const dbPayload = {
+      email: newUser.email.toLowerCase(),
+      full_name: newUser.name,
+      role: newUser.role,
+      role_title: newUser.roleTitle,
+      status: newUser.status || 'AKTIF',
+      password_hash: newUser.passwordHash || 'password123',
+      allowed_modules: record.allowedModules
+    };
+    supabase.from('users').insert([dbPayload]).then(({ error }) => {
+      if (error) console.error('Supabase insert user error:', error.message);
+    });
   };
 
   const toggleUserStatus = (id: string) => {
+    let targetUser: WhitelistRecord | undefined;
     setWhitelistUsers(prev =>
-      prev.map(u => (u.id === id ? { ...u, status: u.status === 'AKTIF' ? 'NONAKTIF' : 'AKTIF' } : u))
+      prev.map(u => {
+        if (u.id === id) {
+          const nextStatus = u.status === 'AKTIF' ? 'NONAKTIF' : 'AKTIF';
+          targetUser = { ...u, status: nextStatus };
+          return targetUser;
+        }
+        return u;
+      })
     );
+
+    if (targetUser) {
+      supabase.from('users').update({ status: targetUser.status }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
+        if (error) console.warn('Supabase toggle status notice:', error.message);
+      });
+    }
   };
 
   const deleteWhitelistUser = (id: string) => {
+    const targetUser = whitelistUsers.find(u => u.id === id);
     setWhitelistUsers(prev => prev.filter(u => u.id !== id));
+
+    if (targetUser) {
+      supabase.from('users').delete().eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
+        if (error) console.warn('Supabase delete user notice:', error.message);
+      });
+    }
   };
 
   const updateUserPermissions = (userId: string, newAllowedModules: string[]) => {
+    let targetUser: WhitelistRecord | undefined;
     setWhitelistUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, allowedModules: newAllowedModules } : u))
+      prev.map(u => {
+        if (u.id === userId) {
+          targetUser = { ...u, allowedModules: newAllowedModules };
+          return targetUser;
+        }
+        return u;
+      })
     );
 
     if (currentUser && currentUser.id === userId) {
       setCurrentUser(prev => prev ? { ...prev, allowedModules: newAllowedModules } : null);
+    }
+
+    if (targetUser) {
+      supabase.from('users').update({ allowed_modules: newAllowedModules }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
+        if (error) console.warn('Supabase update permissions notice:', error.message);
+      });
     }
   };
 

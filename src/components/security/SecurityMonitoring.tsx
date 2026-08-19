@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
 import { ShieldCheck, UserPlus, AlertOctagon, Activity, Trash2, Power, Search, KeyRound, CheckCircle2, Lock, Copy, SlidersHorizontal, UserCheck } from 'lucide-react';
-import { UserRole } from '../../types/auth';
+import { UserRole, isSuperAdminRole } from '../../types/auth';
 import { WhitelistRecord } from '../../types/security';
-import { supabase } from '../../lib/supabaseClient'; // Pastikan path ini sesuai (supabase atau supabaseClient)
+import { supabase } from '../../lib/supabaseClient';
 
 interface ModuleDef {
   id: string;
@@ -18,16 +18,37 @@ const MODULE_LIST: ModuleDef[] = [
   { id: 'outbound', label: 'Barang Keluar (Surat Jalan)' },
   { id: 'inbound', label: 'Barang Masuk (Restock)' },
   { id: 'opname', label: 'Stock Opname & Scanner' },
-  { id: 'reports', label: 'Laporan Mutasi & Audit Log' },
+  { id: 'reports', label: 'Laporan Mutasi & Keuangan' },
+  { id: 'audit_log', label: 'Audit Trail & Activity Log' },
   { id: 'security', label: 'Keamanan & Akses Email (Khusus Super Admin)', isSuperAdminOnly: true }
 ];
 
-export const SecurityMonitoring: React.FC = () => {
+interface SecurityMonitoringProps {
+  defaultTab?: 'WHITELIST' | 'AUDIT_LOGS' | 'OTP_DESK' | 'audit_log' | 'audit' | 'security';
+}
+
+export const SecurityMonitoring: React.FC<SecurityMonitoringProps> = ({ defaultTab }) => {
   const { whitelistUsers, securityLogs, activeOtps, addWhitelistUser, toggleUserStatus, deleteWhitelistUser, updateUserPermissions } = useAuth();
   const { showToast } = useInventory();
 
-  const [activeTab, setActiveTab] = useState<'WHITELIST' | 'AUDIT_LOGS' | 'OTP_DESK'>('WHITELIST');
+  const parseTabProp = (tabProp?: string): 'WHITELIST' | 'AUDIT_LOGS' | 'OTP_DESK' => {
+    if (tabProp === 'audit_log' || tabProp === 'audit' || tabProp === 'AUDIT_LOGS') {
+      return 'AUDIT_LOGS';
+    }
+    if (tabProp === 'OTP_DESK') {
+      return 'OTP_DESK';
+    }
+    return 'WHITELIST';
+  };
+
+  const [activeTab, setActiveTab] = useState<'WHITELIST' | 'AUDIT_LOGS' | 'OTP_DESK'>(() => parseTabProp(defaultTab));
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(parseTabProp(defaultTab));
+    }
+  }, [defaultTab]);
 
   // Add Whitelist Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -47,8 +68,6 @@ export const SecurityMonitoring: React.FC = () => {
   const successfulLoginsCount = securityLogs.filter(l => l.status === 'SUCCESS').length;
   const suspiciousAttemptsCount = securityLogs.filter(l => l.isSuspicious).length;
 
-  // 🚀 FUNGSI SIMPAN TERHUBUNG LANGSUNG KE SUPABASE
-// 🚀 FUNGSI SIMPAN TERHUBUNG LANGSUNG KE SUPABASE AUTH & TABEL USERS
   const handleCreateWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim() || !newName.trim()) {
@@ -62,59 +81,31 @@ export const SecurityMonitoring: React.FC = () => {
       const emailFormatted = newEmail.trim().toLowerCase();
       const passwordToUse = newPassword.trim() || 'password123';
 
-      // 1. STEP 1: Buat Akun Resmi di Supabase Authentication
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      try {
+        await supabase.auth.signUp({
+          email: emailFormatted,
+          password: passwordToUse,
+        });
+      } catch (authErr: any) {
+        console.warn('Supabase Auth Notice:', authErr.message);
+      }
+
+      addWhitelistUser({
         email: emailFormatted,
-        password: passwordToUse,
+        name: newName.trim(),
+        role: newRole,
+        roleTitle: newRoleTitle,
+        status: 'AKTIF',
+        passwordHash: passwordToUse
       });
 
-      if (authError) {
-        // Jika akun sudah terdaftar di Supabase Auth, beri catatan di log dan lanjutkan ke penyiapan tabel users
-        console.warn('Proses Supabase Auth Notice/Warn:', authError.message);
-      }
-
-      const userId = authData?.user?.id;
-
-      // 2. STEP 2: Simpan ke Database Supabase (Tabel 'users')
-      const { data, error: dbError } = await supabase
-        .from('users')
-        .insert([
-          {
-            ...(userId ? { id: userId } : {}), // Sambungkan ID Auth jika tersedia
-            email: emailFormatted,
-            full_name: newName.trim(),
-            role: newRole, // e.g. 'SUPER_ADMIN', 'OWNER', 'ADMIN_GUDANG', dll.
-          }
-        ])
-        .select();
-
-      if (dbError) {
-        // Handling jika email sudah terdaftar di tabel users
-        if (dbError.code === '23505') {
-          throw new Error(`Email "${emailFormatted}" sudah terdaftar di whitelist!`);
-        }
-        throw new Error(dbError.message);
-      }
-
-      // 3. STEP 3: Update state lokal di AuthContext
-      if (addWhitelistUser) {
-        addWhitelistUser({
-          email: emailFormatted,
-          name: newName.trim(),
-          role: newRole,
-          roleTitle: newRoleTitle,
-          status: 'AKTIF',
-          passwordHash: passwordToUse
-        });
-      }
-
-      showToast(`User "${emailFormatted}" berhasil didaftarkan! Password: ${passwordToUse}`, 'success');
+      showToast(`User "${emailFormatted}" (${newRoleTitle}) berhasil didaftarkan!`, 'success');
       setIsAddModalOpen(false);
       setNewEmail('');
       setNewName('');
       setNewPassword('password123');
     } catch (err: any) {
-      console.error('Error inserting user to Supabase:', err);
+      console.error('Error adding user:', err);
       showToast(`Gagal menyimpan: ${err.message}`, 'error');
     } finally {
       setIsLoading(false);
@@ -182,10 +173,10 @@ export const SecurityMonitoring: React.FC = () => {
       <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
           <h2 className="font-extrabold text-xl text-black flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-[#0B3C85]" /> Security Center & Matriks Hak Akses User
+            <ShieldCheck className="w-6 h-6 text-[#0B3C85]" /> Security Center & Audit Trail Management
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Kontrol penuh hak akses menu & monitoring keamanan
+            Kontrol penuh hak akses menu & monitoring log keamanan sistem
           </p>
         </div>
 
@@ -297,7 +288,8 @@ export const SecurityMonitoring: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
                 {filteredWhitelist.map((user, index) => {
-                  const allowedCount = user.allowedModules ? user.allowedModules.length : 3;
+                  const isSuper = isSuperAdminRole(user.role);
+                  const allowedCount = isSuper ? 8 : (user.allowedModules ? user.allowedModules.length : 3);
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50 transition">
@@ -309,8 +301,10 @@ export const SecurityMonitoring: React.FC = () => {
                         <span className="text-[10px] text-slate-500 font-semibold">{user.role}</span>
                       </td>
                       <td className="py-3 px-4 text-center min-w-[140px] whitespace-nowrap">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-mono font-extrabold text-[11px] rounded-lg border border-slate-300 inline-block whitespace-nowrap">
-                          {allowedCount} Modul Menu
+                        <span className={`px-2.5 py-1 font-mono font-extrabold text-[11px] rounded-lg border inline-block whitespace-nowrap ${
+                          isSuper ? 'bg-purple-50 text-purple-800 border-purple-300' : 'bg-slate-100 text-slate-800 border-slate-300'
+                        }`}>
+                          {allowedCount} Modul Lengkap {isSuper ? '(Full Access)' : ''}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -362,7 +356,7 @@ export const SecurityMonitoring: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Desk Bantuan OTP (Active OTP Logs for Owner) */}
+      {/* Tab 2: Desk Bantuan OTP */}
       {activeTab === 'OTP_DESK' && (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -371,7 +365,7 @@ export const SecurityMonitoring: React.FC = () => {
                 <KeyRound className="w-4 h-4 text-[#0B3C85]" /> Monitoring Desk Bantuan OTP Login Staf
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Daftar kode OTP yang sedang dikirimkan/aktif. Owner dapat memberikan kode ini jika staf gudang meminta bantuan login.
+                Daftar kode OTP 6-digit aktif. Super Admin / Owner / Deputi Direktur dapat membantu memberikan kode jika staf meminta bantuan login.
               </p>
             </div>
           </div>
@@ -531,18 +525,18 @@ export const SecurityMonitoring: React.FC = () => {
                   onChange={e => {
                     const role = e.target.value as UserRole;
                     setNewRole(role);
-                    if (role === 'SUPER_ADMIN') setNewRoleTitle('Super Admin');
+                    if (role === 'SUPER_ADMIN') setNewRoleTitle('Super Admin (Deputi Direktur)');
                     else if (role === 'OWNER') setNewRoleTitle('Owner / Pemilik Toko');
                     else if (role === 'DEPUTI_DIREKTUR') setNewRoleTitle('Deputi Direktur');
                     else if (role === 'ADMIN_GUDANG') setNewRoleTitle('Head Stock Admin Gudang');
                     else if (role === 'PETUGAS_GUDANG') setNewRoleTitle('Petugas Stock Opname & Scan');
-                    else setNewRoleTitle('Auditor System');
+                    else setNewRoleTitle('Auditor Internal');
                   }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-black font-bold focus:border-[#0B3C85] focus:outline-none"
                 >
-                  <option value="SUPER_ADMIN">SUPER_ADMIN (Akses Penuh Super Admin)</option>
-                  <option value="OWNER">OWNER (Owner)</option>
-                  <option value="DEPUTI_DIREKTUR">DEPUTI_DIREKTUR (Deputi Direktur)</option>
+                  <option value="SUPER_ADMIN">SUPER_ADMIN (Super Admin / Akses Penuh)</option>
+                  <option value="OWNER">OWNER (Owner / Akses Penuh)</option>
+                  <option value="DEPUTI_DIREKTUR">DEPUTI_DIREKTUR (Deputi Direktur / Akses Penuh)</option>
                   <option value="ADMIN_GUDANG">ADMIN_GUDANG (Kelola Katalog & Mutasi)</option>
                   <option value="PETUGAS_GUDANG">PETUGAS_GUDANG (Stock Opname & Scan Only)</option>
                   <option value="AUDITOR">AUDITOR (Read-Only Audit)</option>
@@ -611,8 +605,9 @@ export const SecurityMonitoring: React.FC = () => {
 
               <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
                 {MODULE_LIST.map(mod => {
-                  const isChecked = selectedModules.includes(mod.id);
-                  const isLocked = mod.isSuperAdminOnly && permissionTargetUser.role !== 'SUPER_ADMIN';
+                  const isSuperCategory = isSuperAdminRole(permissionTargetUser.role);
+                  const isChecked = isSuperCategory ? true : selectedModules.includes(mod.id);
+                  const isLocked = mod.isSuperAdminOnly && !isSuperCategory;
 
                   return (
                     <label
@@ -624,7 +619,7 @@ export const SecurityMonitoring: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
-                          disabled={isLocked}
+                          disabled={isLocked || isSuperCategory}
                           checked={isChecked}
                           onChange={() => handleToggleModuleCheck(mod.id)}
                           className="w-4 h-4 text-[#0B3C85] rounded border-slate-300 focus:ring-[#0B3C85]"
@@ -632,9 +627,15 @@ export const SecurityMonitoring: React.FC = () => {
                         <span className="text-xs font-bold text-slate-900">{mod.label}</span>
                       </div>
 
+                      {isSuperCategory && (
+                        <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">
+                          ✓ Otomatis Akses Penuh
+                        </span>
+                      )}
+
                       {isLocked && (
                         <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                          Terkuak Khusus Super Admin
+                          Terkunci Khusus Super Admin
                         </span>
                       )}
                     </label>

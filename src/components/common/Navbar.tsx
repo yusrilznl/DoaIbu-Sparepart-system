@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
+import { isSuperAdminRole } from '../../types/auth';
 import { Menu, LogOut, Bell, Search, Eye, EyeOff } from 'lucide-react';
 import { DoaIbuLogo } from './DoaIbuLogo';
 import { SparePart } from '../../types/inventory';
@@ -20,7 +21,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
   const [globalSearch, setGlobalSearch] = useState('');
   const [scannedQuickPart, setScannedQuickPart] = useState<SparePart | null>(null);
 
-  // Sample Notifications
   const [notifications, setNotifications] = useState([
     {
       id: 'notif-1',
@@ -47,10 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
     showToast('Seluruh pemberitahuan telah ditandai dibaca.', 'info');
   };
 
-  const handleToggleRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-  };
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (onSearchGlobal && globalSearch.trim()) {
@@ -67,9 +63,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
     }
   };
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
 
-  // Professional avatar fallback URL with Google Profile photo support
+  // Professional avatar fallback URL
   const userPhotoUrl = currentUser?.email === 'yusrilznl@gmail.com'
     ? 'https://ui-avatars.com/api/?name=Yusril+Zainal&background=0B3C85&color=ffffff&bold=true&size=128'
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=0B3C85&color=ffffff&bold=true&size=128`;
@@ -77,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200 shadow-xs w-full max-w-full overflow-hidden">
       <div className="px-3 py-2.5 flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
-        {/* Left Side (Pojok Kiri HP & Desktop): Hamburger Menu (☰) + Logo Doa Ibu */}
+        {/* Left Side: Hamburger + Logo */}
         <div className="flex items-center gap-2 shrink-0">
           {onToggleSidebar && (
             <button
@@ -92,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
           <DoaIbuLogo size="sm" showSubtitle={true} />
         </div>
 
-        {/* Middle: Global Search Input (Desktop Only - min-width 1024px) */}
+        {/* Middle: Global Search Input (Desktop) */}
         <div className="hidden lg:flex flex-1 max-w-md mx-4">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
@@ -106,10 +102,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
           </form>
         </div>
 
-        {/* Right Side: Clean Navbar with User Profile Avatar (YZ) and Desktop Controls */}
+        {/* Right Side: Privacy Toggle + Bell + Profile Avatar */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Desktop Only: Owner Eye Privacy Toggle Button */}
-          {isSuperAdmin && (
+          {/* Desktop Only: Super Admin Eye Privacy Toggle Button */}
+          {isSuperAdminCategory && (
             <button
               onClick={handleTogglePrivacy}
               className={`hidden md:flex px-2.5 py-1.5 rounded-xl border font-extrabold text-xs items-center gap-1.5 transition ${
@@ -133,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
             </button>
           )}
 
-          {/* Desktop Only: Interactive Notifications Popover */}
+          {/* Desktop Only: Notifications Popover */}
           <div className="relative hidden md:block">
             <button
               onClick={() => setIsNotificationOpen(prev => !prev)}
@@ -168,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
             )}
           </div>
 
-          {/* Mobile & Desktop: Avatar Profil User (YZ) */}
+          {/* Avatar Profil User */}
           <div className="flex items-center gap-2 border-l border-slate-200 pl-2 shrink-0">
             <div className="relative shrink-0">
               <img
@@ -180,15 +176,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
             </div>
 
             <div className="hidden md:flex flex-col text-left justify-center">
-              <span className="text-xs font-black text-slate-900 leading-tight truncate max-w-[110px]">
+              <span className="text-xs font-black text-slate-900 leading-tight truncate max-w-[140px]">
                 {currentUser?.name}
               </span>
               <span className="text-[10px] font-bold text-[#0B3C85] leading-none mt-0.5 whitespace-nowrap">
-                {currentUser?.roleTitle}
+                {currentUser?.roleTitle || 'Super Admin (Deputi Direktur)'}
               </span>
             </div>
 
-            {/* Desktop Only: Logout Button */}
+            {/* Desktop Logout Button */}
             <button
               onClick={logout}
               className="hidden md:block p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
@@ -200,7 +196,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
         </div>
       </div>
 
-      {/* Quick Item Detail Drawer when scanned */}
       {scannedQuickPart && (
         <ItemDetailDrawer
           part={scannedQuickPart}

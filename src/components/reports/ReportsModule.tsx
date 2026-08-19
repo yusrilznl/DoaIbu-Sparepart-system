@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
+import { useAuth } from '../../context/AuthContext';
 import { Transaction } from '../../types/inventory';
-import { FileText, Search, Filter, Printer, FileSpreadsheet, Truck, PackagePlus } from 'lucide-react';
+import { isSuperAdminRole } from '../../types/auth';
+import { FileText, Search, Filter, Printer, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { InvoiceModal } from '../transactions/InvoiceModal';
 
 export const ReportsModule: React.FC = () => {
-  const { transactions, showToast } = useInventory();
+  const { transactions, deleteTransaction, showToast } = useInventory();
+  const { currentUser } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [printingTransaction, setPrintingTransaction] = useState<Transaction | null>(null);
+
+  const isSuperCategory = isSuperAdminRole(currentUser?.role);
 
   const filteredTransactions = transactions.filter(tx => {
     const matchesSearch =
@@ -22,6 +27,12 @@ export const ReportsModule: React.FC = () => {
 
     return matchesSearch && matchesType;
   });
+
+  const handleDeleteTx = (txId: string, noTx: string) => {
+    if (window.confirm(`Apakah Anda yakin ingin membatalkan & menghapus transaksi "${noTx}"? Data akan dihapus permanen dari database Supabase.`)) {
+      deleteTransaction(txId);
+    }
+  };
 
   // Export CSV Handler
   const handleExportCsv = () => {
@@ -64,7 +75,7 @@ export const ReportsModule: React.FC = () => {
             <FileText className="w-6 h-6 text-[#0B3C85]" /> Laporan Mutasi & Audit Trail Transaksi
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Kearsipan lengkap penerimaan barang masuk & keluar
+            Kearsipan lengkap penerimaan barang masuk & keluar (Tersimpan di Supabase DB)
           </p>
         </div>
 
@@ -122,8 +133,8 @@ export const ReportsModule: React.FC = () => {
             <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold">
-                    Belum ada riwayat transaksi yang sesuai.
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
+                    Belum ada data transaksi tersimpan di Supabase DB.
                   </td>
                 </tr>
               ) : (
@@ -149,12 +160,24 @@ export const ReportsModule: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">{tx.salesPerson}</td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => setPrintingTransaction(tx)}
-                          className="px-3 py-1.5 bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs rounded-lg flex items-center gap-1 mx-auto shadow-2xs transition"
-                        >
-                          <Printer className="w-3.5 h-3.5" /> Cetak Surat Jalan
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setPrintingTransaction(tx)}
+                            className="px-3 py-1.5 bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs rounded-lg flex items-center gap-1 shadow-2xs transition"
+                          >
+                            <Printer className="w-3.5 h-3.5" /> Cetak Surat Jalan
+                          </button>
+
+                          {isSuperCategory && (
+                            <button
+                              onClick={() => handleDeleteTx(tx.id, tx.noTransaksi)}
+                              className="p-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg border border-red-200 transition"
+                              title="Batal / Hapus Transaksi (Hanya Super Admin / Owner / Deputi)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

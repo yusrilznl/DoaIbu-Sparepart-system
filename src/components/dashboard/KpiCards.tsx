@@ -1,7 +1,8 @@
 import React from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
-import { Package, AlertTriangle, ArrowUpRight, ArrowDownToLine, DollarSign, Lock, TrendingDown, BarChart3, MapPin, Activity } from 'lucide-react';
+import { isSuperAdminRole } from '../../types/auth';
+import { Package, AlertTriangle, ArrowUpRight, ArrowDownToLine, DollarSign, Lock, TrendingDown, BarChart3, Activity, Eye, EyeOff } from 'lucide-react';
 
 interface KpiCardsProps {
   onNavigate?: (tab: string) => void;
@@ -9,10 +10,10 @@ interface KpiCardsProps {
 
 export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
   const { parts, transactions, getLowStockParts, getOverstockParts, activityLogs } = useInventory();
-  const { currentUser, isFinancialPrivacyEnabled } = useAuth();
+  const { currentUser, isFinancialPrivacyEnabled, toggleFinancialPrivacy } = useAuth();
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-  const shouldSensorFinancialData = !isSuperAdmin || isFinancialPrivacyEnabled;
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+  const shouldSensorFinancialData = !isSuperAdminCategory || isFinancialPrivacyEnabled;
 
   const totalPartNumbers = parts.length;
   const lowStockParts = getLowStockParts();
@@ -51,7 +52,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 2: Stok Kritis Alert (Pilar 1) */}
+        {/* Card 2: Stok Kritis Alert */}
         <div
           onClick={() => onNavigate && onNavigate('opname')}
           className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
@@ -70,7 +71,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 3: Overstock Alert (Pilar 1) */}
+        {/* Card 3: Overstock Alert */}
         <div
           onClick={() => onNavigate && onNavigate('catalog')}
           className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
@@ -113,12 +114,23 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Row 2: Financial & Audit Summary (collapsible on mobile via smaller size) */}
+      {/* Row 2: Financial & Audit Summary with Interactive Lock Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Valuasi Aset HPP */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between relative group">
           <div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">VALUASI ASET GUDANG (HPP)</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">VALUASI ASET GUDANG (HPP)</span>
+              {isSuperAdminCategory && (
+                <button
+                  onClick={toggleFinancialPrivacy}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                  title={isFinancialPrivacyEnabled ? "Klik untuk Tampilkan Angka HPP" : "Klik untuk Sembunyikan/Sensor HPP"}
+                >
+                  {isFinancialPrivacyEnabled ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5 text-[#0B3C85]" />}
+                </button>
+              )}
+            </div>
             {shouldSensorFinancialData ? (
               <p className="text-lg font-black text-amber-600 font-mono mt-1">Rp •••••••••</p>
             ) : (
@@ -126,15 +138,42 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
             )}
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">Total Modal HPP Fisik</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center">
+
+          <button
+            onClick={() => isSuperAdminCategory && toggleFinancialPrivacy()}
+            disabled={!isSuperAdminCategory}
+            className={`w-11 h-11 rounded-xl border flex items-center justify-center transition ${
+              isSuperAdminCategory ? 'cursor-pointer hover:scale-105 shadow-2xs' : 'cursor-not-allowed'
+            } ${
+              shouldSensorFinancialData
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-blue-50 border-blue-200 text-[#0B3C85]'
+            }`}
+            title={
+              isSuperAdminCategory
+                ? (isFinancialPrivacyEnabled ? "Buka Gembok (Unhide Nomimal HPP)" : "Kunci Gembok (Hide Nominal HPP)")
+                : "Nominal HPP Terkunci Khusus Super Admin / Owner / Deputi"
+            }
+          >
             {shouldSensorFinancialData ? <Lock className="w-5 h-5 text-amber-600" /> : <DollarSign className="w-5 h-5" />}
-          </div>
+          </button>
         </div>
 
-        {/* Pilar 2: Estimasi Potensi Profit */}
-        <div className="bg-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between">
+        {/* Estimasi Potensi Profit */}
+        <div className="bg-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between relative group">
           <div>
-            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">ESTIMASI POTENSI PROFIT</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">ESTIMASI POTENSI PROFIT</span>
+              {isSuperAdminCategory && (
+                <button
+                  onClick={toggleFinancialPrivacy}
+                  className="p-1 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-800 transition"
+                  title={isFinancialPrivacyEnabled ? "Klik untuk Tampilkan Nominal Profit" : "Klik untuk Sembunyikan/Sensor Profit"}
+                >
+                  {isFinancialPrivacyEnabled ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5 text-emerald-600" />}
+                </button>
+              )}
+            </div>
             {shouldSensorFinancialData ? (
               <p className="text-lg font-black text-emerald-600 font-mono mt-1">Rp •••••••••</p>
             ) : (
@@ -142,15 +181,31 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
             )}
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">Margin Jual Toko − HPP</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-            {shouldSensorFinancialData ? <Lock className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-          </div>
+
+          <button
+            onClick={() => isSuperAdminCategory && toggleFinancialPrivacy()}
+            disabled={!isSuperAdminCategory}
+            className={`w-11 h-11 rounded-xl border flex items-center justify-center transition ${
+              isSuperAdminCategory ? 'cursor-pointer hover:scale-105 shadow-2xs' : 'cursor-not-allowed'
+            } ${
+              shouldSensorFinancialData
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            }`}
+            title={
+              isSuperAdminCategory
+                ? (isFinancialPrivacyEnabled ? "Buka Gembok (Unhide Nominal Profit)" : "Kunci Gembok (Hide Nominal Profit)")
+                : "Nominal Profit Terkunci Khusus Super Admin / Owner / Deputi"
+            }
+          >
+            {shouldSensorFinancialData ? <Lock className="w-5 h-5 text-amber-600" /> : <ArrowUpRight className="w-5 h-5" />}
+          </button>
         </div>
 
-        {/* Pilar 5: Aktivitas Hari Ini */}
+        {/* Aktivitas Hari Ini */}
         <div
-          onClick={() => (isSuperAdmin || currentUser?.role === 'AUDITOR') && onNavigate && onNavigate('audit')}
-          className={`bg-white border border-violet-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between ${(isSuperAdmin || currentUser?.role === 'AUDITOR') ? 'cursor-pointer hover:shadow-md transition' : ''}`}
+          onClick={() => (isSuperAdminCategory || currentUser?.role === 'AUDITOR') && onNavigate && onNavigate('audit')}
+          className={`bg-white border border-violet-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between ${(isSuperAdminCategory || currentUser?.role === 'AUDITOR') ? 'cursor-pointer hover:shadow-md transition' : ''}`}
         >
           <div>
             <span className="text-[10px] font-black text-violet-600 uppercase tracking-wider block">AKTIVITAS HARI INI</span>
