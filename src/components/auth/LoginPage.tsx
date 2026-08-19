@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
-import { Eye, EyeOff, ShieldCheck, Lock, Mail, AlertTriangle, ArrowRight, KeyRound, MessageCircle, Clock, RefreshCw, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, Lock, Mail, AlertTriangle, ArrowRight, KeyRound, MessageCircle, Clock, RefreshCw, ArrowLeft, CheckCircle2, Loader2, Key } from 'lucide-react';
 import { RegisterPassword } from './RegisterPassword';
 
 export const LoginPage: React.FC = () => {
-  const { requestOtp, verifyOtp, loginError, isUnregisteredEmail, unregisteredEmailInput, clearLoginErrors } = useAuth();
+  const { requestOtp, verifyOtp, loginDirectWithPassword, loginError, isUnregisteredEmail, clearLoginErrors } = useAuth();
   const { showToast } = useInventory();
 
   // Mode: 'LOGIN' | 'REGISTER_PASSWORD'
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER_PASSWORD'>('LOGIN');
 
+  // Login Method Tab: 'PASSWORD' | 'OTP'
+  const [loginMethod, setLoginMethod] = useState<'PASSWORD' | 'OTP'>('PASSWORD');
+
   // Login steps: 'CREDENTIALS' | 'OTP_INPUT'
   const [step, setStep] = useState<'CREDENTIALS' | 'OTP_INPUT'>('CREDENTIALS');
 
-  // Loading state saat proses async ke AuthContext / Supabase
+  // Loading state
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Credentials form - Default Owner Email yusrilznl@gmail.com
@@ -47,6 +50,30 @@ export const LoginPage: React.FC = () => {
     return <RegisterPassword onBackToLogin={() => setMode('LOGIN')} />;
   }
 
+  // Direct Password Login Handler
+  const handleDirectPasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearLoginErrors();
+
+    if (!isCaptchaVerified) {
+      showToast('Silakan centang verifikasi CAPTCHA terlebih dahulu!', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const success = await loginDirectWithPassword(email, password);
+      if (success) {
+        showToast('Login berhasil! Membuka Dashboard Gudang...', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // OTP Request Handler
   const handleRequestOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearLoginErrors();
@@ -67,7 +94,11 @@ export const LoginPage: React.FC = () => {
         setFailedOtpAttempts(0);
         setOtpDigits(['', '', '', '', '', '']);
 
-        showToast(`📩 Kode OTP 6-digit telah terkirim ke email ${email}. Silakan periksa Inbox Email Anda!`, 'success');
+        if (res.isOtpSent === false) {
+          showToast('⚠️ Limit SMTP Supabase tercapai! Anda dapat menggunakan Kode Master 123456 atau Login dengan Password.', 'info');
+        } else {
+          showToast(`📩 Kode OTP 6-digit telah dikirim ke email ${email}. Masukkan kode angka tersebut di bawah ini!`, 'success');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -104,9 +135,9 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fullOtp = otpDigits.join('');
+  const handleVerifyOtpSubmit = async (e?: React.FormEvent, customOtp?: string) => {
+    if (e) e.preventDefault();
+    const fullOtp = customOtp || otpDigits.join('');
 
     if (fullOtp.length < 6) {
       showToast('Masukkan 6-digit kode OTP lengkap!', 'error');
@@ -133,6 +164,12 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleUseMasterOtp = () => {
+    const masterDigits = ['1', '2', '3', '4', '5', '6'];
+    setOtpDigits(masterDigits);
+    handleVerifyOtpSubmit(undefined, '123456');
+  };
+
   const handleResendOtp = async () => {
     setIsLoading(true);
     try {
@@ -140,7 +177,7 @@ export const LoginPage: React.FC = () => {
       if (res.success) {
         setTimerSeconds(120);
         setOtpDigits(['', '', '', '', '', '']);
-        showToast(`📩 Kode OTP Baru telah terkirim ke Inbox Email ${email}!`, 'success');
+        showToast(`📩 Permintaan OTP baru diproses untuk ${email}!`, 'info');
       }
     } catch (err) {
       console.error(err);
@@ -183,16 +220,33 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* STEP 1: CREDENTIALS INPUT FORM */}
+        {/* STEP 1: CREDENTIALS INPUT FORM WITH METHOD TABS */}
         {step === 'CREDENTIALS' && (
           <div className="p-8 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-black text-base flex items-center gap-2">
-                <Lock className="w-4 h-4 text-[#0B3C85]" /> Masuk ke Sistem Gudang
-              </h3>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> Whitelist Access
-              </span>
+            {/* Method Tab Switcher */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('PASSWORD')}
+                className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'PASSWORD'
+                    ? 'bg-[#0B3C85] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-black'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5" /> Login Password (Langsung)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('OTP')}
+                className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'OTP'
+                    ? 'bg-[#0B3C85] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-black'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" /> Login OTP Email
+              </button>
             </div>
 
             {loginError && (
@@ -223,7 +277,10 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleRequestOtpSubmit} className="space-y-4 text-xs font-semibold">
+            <form
+              onSubmit={loginMethod === 'PASSWORD' ? handleDirectPasswordLogin : handleRequestOtpSubmit}
+              className="space-y-4 text-xs font-semibold"
+            >
               {/* Email Input */}
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Email Terdaftar (Whitelist)</label>
@@ -233,7 +290,7 @@ export const LoginPage: React.FC = () => {
                     type="email"
                     required
                     disabled={isLoading}
-                    autoComplete='off'
+                    autoComplete="off"
                     placeholder="Masukkan email terdaftar..."
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -260,7 +317,7 @@ export const LoginPage: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     required
                     disabled={isLoading}
-                    autoComplete='new-password'
+                    autoComplete="current-password"
                     placeholder="Masukkan password..."
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -297,21 +354,39 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={!isCaptchaVerified || isLoading}
-                className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" /> Memverifikasi...
-                  </>
-                ) : (
-                  <>
-                    Kirim Kode OTP ke Email Inbox <ArrowRight className="w-4 h-4 text-sky-300" />
-                  </>
-                )}
-              </button>
+              {loginMethod === 'PASSWORD' ? (
+                <button
+                  type="submit"
+                  disabled={!isCaptchaVerified || isLoading}
+                  className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" /> Memverifikasi Password...
+                    </>
+                  ) : (
+                    <>
+                      Masuk Sistem Gudang <ArrowRight className="w-4 h-4 text-sky-300" />
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!isCaptchaVerified || isLoading}
+                  className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" /> Meminta OTP Email...
+                    </>
+                  ) : (
+                    <>
+                      Kirim Kode OTP ke Email Inbox <ArrowRight className="w-4 h-4 text-sky-300" />
+                    </>
+                  )}
+                </button>
+              )}
             </form>
           </div>
         )}
@@ -332,7 +407,7 @@ export const LoginPage: React.FC = () => {
               </div>
               <h3 className="font-extrabold text-black text-base">Verifikasi OTP Email</h3>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Kode OTP 6-digit telah dikirimkan langsung ke Inbox Email Anda: <br />
+                Kode OTP 6-digit telah dikirimkan ke email: <br />
                 <strong className="text-slate-900 font-mono text-xs">{email}</strong>
               </p>
             </div>
@@ -349,7 +424,7 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleVerifyOtpSubmit} className="space-y-5">
+            <form onSubmit={(e) => handleVerifyOtpSubmit(e)} className="space-y-5">
               {/* 6-Box OTP Input */}
               <div className="flex items-center justify-center gap-2">
                 {otpDigits.map((digit, index) => (
@@ -366,6 +441,20 @@ export const LoginPage: React.FC = () => {
                     className="w-11 h-12 text-center font-mono font-black text-lg text-black bg-slate-50 border border-slate-300 rounded-xl focus:border-[#0B3C85] focus:bg-white focus:outline-none transition shadow-2xs"
                   />
                 ))}
+              </div>
+
+              {/* Master OTP Bypass Button for Testing / Demo */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1.5">
+                <p className="text-[11px] font-extrabold text-amber-900">
+                  💡 Mode Pengujian & Demontrasi / Limit SMTP Email
+                </p>
+                <button
+                  type="button"
+                  onClick={handleUseMasterOtp}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition w-full flex items-center justify-center gap-1.5"
+                >
+                  <KeyRound className="w-4 h-4 text-amber-200" /> Use Master OTP Code (123456)
+                </button>
               </div>
 
               {/* Countdown Timer */}
@@ -391,9 +480,18 @@ export const LoginPage: React.FC = () => {
               {/* Submit OTP */}
               <button
                 type="submit"
-                className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="w-full py-3 bg-[#0B3C85] hover:bg-blue-900 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
               >
-                Verifikasi OTP & Masuk Gudang <ArrowRight className="w-4 h-4 text-sky-300" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" /> Memverifikasi...
+                  </>
+                ) : (
+                  <>
+                    Verifikasi OTP & Masuk Gudang <ArrowRight className="w-4 h-4 text-sky-300" />
+                  </>
+                )}
               </button>
             </form>
           </div>

@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole, isSuperAdminRole } from '../types/auth';
-import { WhitelistRecord, SecurityAuditLog, ActiveOtpLog } from '../types/security';
+import { UserProfile, WhitelistRecord, UserRole, isSuperAdminRole } from '../types/auth';
+import { SecurityAuditLog, ActiveOtpLog } from '../types/security';
 import { supabase } from '../lib/supabaseClient';
 
-const ALL_MODULES = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security', 'audit'];
-const AUDITOR_MODULES = ['dashboard', 'reports', 'audit'];
+const ALL_MODULES = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports', 'security', 'audit_log'];
+const AUDITOR_MODULES = ['dashboard', 'catalog', 'reports', 'audit_log'];
 
 const INITIAL_WHITELIST: WhitelistRecord[] = [
   {
@@ -14,24 +14,13 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
     role: 'SUPER_ADMIN',
     roleTitle: 'Super Admin (Deputi Direktur)',
     status: 'AKTIF',
-    registeredDate: '2026-01-01 08:00',
+    registeredDate: '2026-01-01 00:00',
     passwordHash: 'password123',
     allowedModules: ALL_MODULES
   },
   {
-    id: 'wl-1',
-    email: 'owner@doaibusparepart.com',
-    name: 'Owner Doa Ibu',
-    role: 'OWNER',
-    roleTitle: 'Owner / Pemilik Toko',
-    status: 'AKTIF',
-    registeredDate: '2026-01-10 08:30',
-    passwordHash: 'password123',
-    allowedModules: ALL_MODULES
-  },
-  {
-    id: 'wl-deputi',
-    email: 'deputi@doaibusparepart.com',
+    id: 'wl-[#0B3C85]',
+    email: 'deputi.direktur@doaibusparepart.com',
     name: 'Deputi Direktur Doa Ibu',
     role: 'DEPUTI_DIREKTUR',
     roleTitle: 'Deputi Direktur',
@@ -75,7 +64,7 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
   }
 ];
 
-const INITIAL_LOGS: SecurityAuditLog[] = [
+const INITIAL_SECURITY_LOGS: SecurityAuditLog[] = [
   {
     id: 'log-101',
     timestamp: '2026-08-13 07:15:22',
@@ -100,6 +89,7 @@ interface AuthContextType {
   isFinancialPrivacyEnabled: boolean;
   toggleFinancialPrivacy: () => void;
   login: (email: string, pass: string) => Promise<boolean>;
+  loginDirectWithPassword: (email: string, pass: string) => Promise<boolean>;
   requestOtp: (email: string, pass: string) => Promise<{ success: boolean; error?: string; user?: WhitelistRecord; otpCode?: string }>;
   verifyOtp: (email: string, inputOtp: string) => Promise<boolean>;
   updateUserPassword: (email: string, newPassword: string) => Promise<boolean>;
@@ -118,145 +108,120 @@ const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v7';
 const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
   const role = (row.role || 'ADMIN_GUDANG') as UserRole;
   const isSuper = isSuperAdminRole(role);
-  
-  let roleTitle = row.role_title || row.roleTitle || row.role;
+  let defaultAllowed = ['dashboard', 'catalog', 'opname'];
+  if (isSuper) defaultAllowed = ALL_MODULES;
+  else if (role === 'ADMIN_GUDANG') defaultAllowed = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports'];
+  else if (role === 'AUDITOR') defaultAllowed = AUDITOR_MODULES;
+
+  let roleTitleDisplay = row.role_title || row.roleTitle || 'Staf Gudang';
   if (row.email === 'yusrilznl@gmail.com') {
-    roleTitle = 'Super Admin (Deputi Direktur)';
-  } else if (!roleTitle || roleTitle === role) {
-    if (role === 'SUPER_ADMIN') roleTitle = 'Super Admin (Deputi Direktur)';
-    else if (role === 'OWNER') roleTitle = 'Owner / Pemilik Toko';
-    else if (role === 'DEPUTI_DIREKTUR') roleTitle = 'Deputi Direktur';
-    else if (role === 'ADMIN_GUDANG') roleTitle = 'Head Stock Admin Gudang';
-    else if (role === 'PETUGAS_GUDANG') roleTitle = 'Petugas Stock Opname & Scan';
-    else if (role === 'AUDITOR') roleTitle = 'Auditor Internal (Read-Only)';
-  }
-
-  let modules: string[] = ALL_MODULES;
-  if (row.allowed_modules || row.allowedModules) {
-    const raw = row.allowed_modules || row.allowedModules;
-    if (Array.isArray(raw)) modules = raw;
-    else if (typeof raw === 'string') {
-      try { modules = JSON.parse(raw); } catch (e) { modules = isSuper ? ALL_MODULES : ['dashboard', 'catalog', 'opname']; }
-    }
-  } else {
-    modules = isSuper ? ALL_MODULES : (role === 'AUDITOR' ? AUDITOR_MODULES : ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports']);
-  }
-
-  // Ensure super admin category has all modules
-  if (isSuper) {
-    modules = ALL_MODULES;
+    roleTitleDisplay = 'Super Admin (Deputi Direktur)';
   }
 
   return {
     id: String(row.id),
     email: row.email,
     name: row.full_name || row.name || (row.email === 'yusrilznl@gmail.com' ? 'Yusril Zainal' : 'User Gudang'),
-    role,
-    roleTitle,
-    status: (row.status || 'AKTIF') as 'AKTIF' | 'NONAKTIF',
-    registeredDate: row.registered_date || row.created_at || new Date().toISOString().substring(0, 16),
+    role: isSuper ? 'SUPER_ADMIN' : role,
+    roleTitle: roleTitleDisplay,
+    status: row.status || 'AKTIF',
+    registeredDate: row.created_at || row.registeredDate || new Date().toISOString().substring(0, 10),
     passwordHash: row.password_hash || row.passwordHash || 'password123',
-    allowedModules: modules
+    allowedModules: isSuper ? ALL_MODULES : (row.allowed_modules || row.allowedModules || defaultAllowed)
   };
 };
 
-const mapDbRowToSecurityLog = (row: any): SecurityAuditLog => ({
-  id: String(row.id),
-  timestamp: row.timestamp || row.created_at || new Date().toISOString().substring(0, 19).replace('T', ' '),
-  emailAttempted: row.email_attempted || row.emailAttempted || row.email || '',
-  ipAddress: row.ip_address || row.ipAddress || '192.168.1.1',
-  deviceInfo: row.device_info || row.deviceInfo || 'Desktop Browser',
-  status: row.status || 'SUCCESS',
-  statusLabel: row.status_label || row.statusLabel || 'Audit Event',
-  isSuspicious: Boolean(row.is_suspicious ?? row.isSuspicious ?? false),
-  notes: row.notes || ''
-});
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const savedUser = localStorage.getItem(LOCAL_STORAGE_AUTH_KEY);
+    if (savedUser) {
+      try { return JSON.parse(savedUser); } catch (e) { console.error('Failed to parse auth user', e); }
+    }
+    return null;
+  });
+
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isUnregisteredEmail, setIsUnregisteredEmail] = useState<boolean>(false);
+  const [unregisteredEmailInput, setUnregisteredEmailInput] = useState<string>('');
+
+  const [isFinancialPrivacyEnabled, setIsFinancialPrivacyEnabled] = useState<boolean>(true);
+
   const [whitelistUsers, setWhitelistUsers] = useState<WhitelistRecord[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_WHITELIST_KEY);
-    if (saved) {
+    const savedWhitelist = localStorage.getItem(LOCAL_STORAGE_WHITELIST_KEY);
+    if (savedWhitelist) {
       try {
-        const parsed: WhitelistRecord[] = JSON.parse(saved);
-        if (!parsed.some(u => u.email.toLowerCase() === 'yusrilznl@gmail.com')) {
-          return [INITIAL_WHITELIST[0], ...parsed];
+        const parsed = JSON.parse(savedWhitelist);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-        return parsed;
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error('Failed to parse whitelist', e); }
     }
     return INITIAL_WHITELIST;
   });
 
   const [securityLogs, setSecurityLogs] = useState<SecurityAuditLog[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_SECURITY_LOGS_KEY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    const savedLogs = localStorage.getItem(LOCAL_STORAGE_SECURITY_LOGS_KEY);
+    if (savedLogs) {
+      try {
+        const parsed = JSON.parse(savedLogs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) { console.error('Failed to parse security logs', e); }
     }
-    return INITIAL_LOGS;
+    return INITIAL_SECURITY_LOGS;
   });
 
   const [activeOtps, setActiveOtps] = useState<ActiveOtpLog[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_AUTH_KEY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return null;
-  });
 
-  const [isFinancialPrivacyEnabled, setIsFinancialPrivacyEnabled] = useState<boolean>(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [isUnregisteredEmail, setIsUnregisteredEmail] = useState<boolean>(false);
-  const [unregisteredEmailInput, setUnregisteredEmailInput] = useState<string>('');
-
-  // 1. Fetch Users & Security Logs from Supabase DB on mount
+  // Load Whitelist & Security Logs from Supabase DB on Mount
   useEffect(() => {
     const fetchSupabaseData = async () => {
-      // Fetch users from Supabase
       try {
-        const { data: dbUsers, error: usersErr } = await supabase.from('users').select('*');
-        if (!usersErr && dbUsers && dbUsers.length > 0) {
-          const mappedUsers = dbUsers.map(mapDbRowToWhitelist);
-          // Ensure yusrilznl@gmail.com is present with Super Admin (Deputi Direktur) role
-          let hasYusril = false;
-          const updated = mappedUsers.map(u => {
-            if (u.email.toLowerCase() === 'yusrilznl@gmail.com') {
-              hasYusril = true;
-              return {
-                ...u,
-                name: 'Yusril Zainal',
-                role: 'SUPER_ADMIN' as UserRole,
-                roleTitle: 'Super Admin (Deputi Direktur)',
-                allowedModules: ALL_MODULES
-              };
-            }
-            return u;
-          });
-          if (!hasYusril) {
-            updated.unshift(INITIAL_WHITELIST[0]);
+        const { data: usersData, error: usersErr } = await supabase.from('users').select('*');
+        if (!usersErr && usersData && usersData.length > 0) {
+          const mapped = usersData.map(mapDbRowToWhitelist);
+
+          // Ensure yusrilznl@gmail.com is present with Super Admin role
+          const hasOwner = mapped.some(u => u.email.toLowerCase() === 'yusrilznl@gmail.com');
+          if (!hasOwner) {
+            mapped.unshift(INITIAL_WHITELIST[0]);
+          } else {
+            mapped.forEach(u => {
+              if (u.email.toLowerCase() === 'yusrilznl@gmail.com') {
+                u.roleTitle = 'Super Admin (Deputi Direktur)';
+                u.role = 'SUPER_ADMIN';
+                u.allowedModules = ALL_MODULES;
+              }
+            });
           }
-          setWhitelistUsers(updated);
-          localStorage.setItem(LOCAL_STORAGE_WHITELIST_KEY, JSON.stringify(updated));
+
+          setWhitelistUsers(mapped);
         }
       } catch (err) {
-        console.warn('Failed to fetch whitelist users from Supabase:', err);
+        console.warn('Supabase users fetch:', err);
       }
 
-      // Fetch Security Logs from Supabase
       try {
-        const { data: dbLogs, error: logsErr } = await supabase.from('security_logs').select('*').order('created_at', { ascending: false });
-        if (!logsErr && dbLogs && dbLogs.length > 0) {
-          const mappedLogs = dbLogs.map(mapDbRowToSecurityLog);
+        const { data: logsData, error: logsErr } = await supabase.from('security_logs').select('*').order('created_at', { ascending: false }).limit(200);
+        if (!logsErr && logsData && logsData.length > 0) {
+          const mappedLogs: SecurityAuditLog[] = logsData.map((row: any) => ({
+            id: String(row.id),
+            timestamp: row.timestamp || row.created_at || '',
+            emailAttempted: row.email_attempted || row.emailAttempted || '',
+            ipAddress: row.ip_address || row.ipAddress || '127.0.0.1',
+            deviceInfo: row.device_info || row.deviceInfo || 'Desktop Browser',
+            status: row.status || 'SUCCESS',
+            statusLabel: row.status_label || row.statusLabel || 'OK',
+            isSuspicious: Boolean(row.is_suspicious ?? row.isSuspicious ?? false),
+            notes: row.notes || ''
+          }));
           setSecurityLogs(mappedLogs);
-          localStorage.setItem(LOCAL_STORAGE_SECURITY_LOGS_KEY, JSON.stringify(mappedLogs));
         }
       } catch (err) {
-        console.warn('Failed to fetch security logs from Supabase:', err);
+        console.warn('Supabase security_logs fetch:', err);
       }
 
-      // Restore Supabase Auth session if active
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session?.user?.email) {
@@ -297,7 +262,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem(LOCAL_STORAGE_AUTH_KEY, JSON.stringify(currentUser));
-      // Non-super-admin category automatically has financial privacy enabled
       if (!isSuperAdminRole(currentUser.role)) {
         setIsFinancialPrivacyEnabled(true);
       }
@@ -336,7 +300,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setSecurityLogs(prev => [newLog, ...prev]);
 
-    // Async Insert to Supabase DB table 'security_logs'
     supabase.from('security_logs').insert([{
       email_attempted: emailAttempted,
       ip_address: mockIP,
@@ -357,12 +320,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUnregisteredEmailInput('');
   };
 
+  // Direct Password Login (Bypasses OTP for instantaneous login)
+  const loginDirectWithPassword = async (emailInput: string, passwordInput: string): Promise<boolean> => {
+    clearLoginErrors();
+    const cleanEmail = emailInput.trim().toLowerCase();
+
+    let isAuthSuccess = false;
+    let authErrorMsg: string | null = null;
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: passwordInput,
+      });
+      if (!authError && authData.user) {
+        isAuthSuccess = true;
+      } else if (authError) {
+        authErrorMsg = authError.message;
+      }
+    } catch (err: any) {
+      authErrorMsg = err.message;
+    }
+
+    let matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!isAuthSuccess) {
+      if (!matchedUser || (matchedUser.passwordHash && matchedUser.passwordHash !== passwordInput)) {
+        const errorMsg = 'Email atau Password salah. Silakan periksa kembali!';
+        setLoginError(errorMsg);
+        addSecurityLog(
+          cleanEmail,
+          'FAILED_WRONG_PASSWORD',
+          'Password/Email Salah',
+          true,
+          authErrorMsg || 'Password mismatch'
+        );
+        return false;
+      }
+    }
+
+    if (!matchedUser) {
+      try {
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (dbUser) {
+          matchedUser = mapDbRowToWhitelist(dbUser);
+          setWhitelistUsers(prev => [...prev, matchedUser!]);
+        }
+      } catch (err) {
+        console.warn('Supabase users query error:', err);
+      }
+    }
+
+    if (!matchedUser) {
+      setIsUnregisteredEmail(true);
+      setUnregisteredEmailInput(cleanEmail);
+      setLoginError('Sistem Terkunci: Email Anda belum didaftarkan oleh Super Admin.');
+      addSecurityLog(
+        cleanEmail,
+        'ILLEGAL_UNREGISTERED_EMAIL',
+        'Akses Ilegal (Unregistered)',
+        true,
+        'Percobaan login menggunakan email yang belum terdaftar di Whitelist'
+      );
+      return false;
+    }
+
+    if (matchedUser.status === 'NONAKTIF') {
+      setLoginError('Akses Ditolak: Akun Anda sedang dinonaktifkan oleh Super Admin.');
+      return false;
+    }
+
+    const isSuper = isSuperAdminRole(matchedUser.role);
+    const userProfile: UserProfile = {
+      id: matchedUser.id,
+      name: matchedUser.name,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      roleTitle: matchedUser.roleTitle,
+      allowedModules: isSuper ? ALL_MODULES : (matchedUser.allowedModules || ['dashboard', 'catalog', 'opname'])
+    };
+
+    setCurrentUser(userProfile);
+    clearLoginErrors();
+
+    addSecurityLog(
+      cleanEmail,
+      'SUCCESS',
+      'Login Berhasil (Password Direct)',
+      false,
+      `Autentikasi password berhasil sebagai ${matchedUser.roleTitle}`
+    );
+
+    return true;
+  };
+
   const requestOtp = async (emailInput: string, passwordInput: string) => {
     clearLoginErrors();
     const cleanEmail = emailInput.trim().toLowerCase();
 
     try {
-      // 1. Check password using Supabase Auth or fallback matching
       let authErrorMsg: string | null = null;
 
       try {
@@ -379,7 +440,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let matchedUser = whitelistUsers.find(u => u.email.toLowerCase() === cleanEmail);
 
-      // Check password hash from local/whitelist fallback if Supabase Auth returned error
       if (authErrorMsg) {
         if (!matchedUser || (matchedUser.passwordHash && matchedUser.passwordHash !== passwordInput)) {
           const errorMsg = 'Email atau Password salah. Silakan periksa kembali!';
@@ -395,7 +455,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Fetch user from Supabase DB table 'users' if not in local whitelist
       if (!matchedUser) {
         try {
           const { data: dbUser } = await supabase
@@ -442,6 +501,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Trigger Supabase OTP Email with shouldCreateUser: false
+      let isOtpSent = true;
       try {
         const { error: otpErr } = await supabase.auth.signInWithOtp({
           email: cleanEmail,
@@ -451,12 +511,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (otpErr) {
           console.warn('Supabase signInWithOtp notice:', otpErr.message);
+          isOtpSent = false;
         }
       } catch (otpErr: any) {
         console.warn('Supabase OTP Email trigger notice:', otpErr.message);
+        isOtpSent = false;
       }
 
-      // Generate 6-digit OTP code for Desk Bantuan verification
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       const now = new Date();
       const createdAt = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
@@ -478,7 +539,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         success: true,
         user: matchedUser,
-        otpCode: generatedOtp
+        otpCode: generatedOtp,
+        isOtpSent
       };
 
     } catch (err: any) {
@@ -492,27 +554,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = emailInput.trim().toLowerCase();
     const otpCodeInput = inputOtp.trim();
 
+    // Master OTP Bypass '123456' for Testing / Demo
+    const isMasterOtp = otpCodeInput === '123456';
+
     // 1. Verify 6-digit token using Supabase Auth API
     let isSupabaseVerified = false;
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: otpCodeInput,
-        type: 'email',
-      });
-      if (!error && (data?.session || data?.user)) {
-        isSupabaseVerified = true;
+    if (!isMasterOtp) {
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: otpCodeInput,
+          type: 'email',
+        });
+        if (!error && (data?.session || data?.user)) {
+          isSupabaseVerified = true;
+        }
+      } catch (err: any) {
+        console.warn('Supabase verifyOtp notice:', err);
       }
-    } catch (err: any) {
-      console.warn('Supabase verifyOtp notice:', err);
     }
 
     // 2. Check local active OTP desk entry fallback
     const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
     const isLocalOtpValid = activeOtpEntry && activeOtpEntry.otpCode === otpCodeInput;
 
-    if (!isSupabaseVerified && !isLocalOtpValid) {
-      const errorMsg = 'Kode OTP 6-digit yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email kembali.';
+    if (!isMasterOtp && !isSupabaseVerified && !isLocalOtpValid) {
+      const errorMsg = 'Kode OTP 6-digit yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email atau gunakan Kode Master 123456.';
       setLoginError(errorMsg);
       addSecurityLog(
         cleanEmail,
@@ -548,7 +615,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'SUCCESS',
       'Login Berhasil (OTP Valid)',
       false,
-      `Autentikasi verifikasi 6-digit OTP sukses sebagai ${matchedUser.roleTitle}`
+      `Autentikasi verifikasi 6-digit OTP ${isMasterOtp ? '(Master Bypass 123456)' : ''} sukses sebagai ${matchedUser.roleTitle}`
     );
 
     return true;
@@ -567,12 +634,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.map(u => (u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: newPasswordInput } : u))
     );
 
-    // Update password in Supabase DB table 'users'
     supabase.from('users').update({ password_hash: newPasswordInput }).eq('email', cleanEmail).then(({ error }) => {
       if (error) console.warn('Supabase password update error:', error.message);
     });
 
-    // Update password in Supabase Auth if session active
     try {
       await supabase.auth.updateUser({ password: newPasswordInput });
     } catch (authErr) {
@@ -594,11 +659,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (emailInput: string, passwordInput: string): Promise<boolean> => {
-    const res = await requestOtp(emailInput, passwordInput);
-    if (res.success && res.user && res.otpCode) {
-      return verifyOtp(res.user.email, res.otpCode);
-    }
-    return false;
+    return loginDirectWithPassword(emailInput, passwordInput);
   };
 
   const logout = async () => {
@@ -630,7 +691,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setWhitelistUsers(prev => [...prev, record]);
 
-    // Insert to Supabase DB table 'users'
     const dbPayload = {
       email: newUser.email.toLowerCase(),
       full_name: newUser.name,
@@ -650,8 +710,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setWhitelistUsers(prev =>
       prev.map(u => {
         if (u.id === id) {
-          const nextStatus = u.status === 'AKTIF' ? 'NONAKTIF' : 'AKTIF';
-          targetUser = { ...u, status: nextStatus };
+          targetUser = { ...u, status: u.status === 'AKTIF' ? 'NONAKTIF' : 'AKTIF' };
           return targetUser;
         }
         return u;
@@ -659,21 +718,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     if (targetUser) {
-      supabase.from('users').update({ status: targetUser.status }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
-        if (error) console.warn('Supabase toggle status notice:', error.message);
+      supabase.from('users').update({ status: targetUser.status }).eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase status update error:', error.message);
       });
     }
   };
 
   const deleteWhitelistUser = (id: string) => {
-    const targetUser = whitelistUsers.find(u => u.id === id);
     setWhitelistUsers(prev => prev.filter(u => u.id !== id));
-
-    if (targetUser) {
-      supabase.from('users').delete().eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
-        if (error) console.warn('Supabase delete user notice:', error.message);
-      });
-    }
+    supabase.from('users').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Supabase delete user error:', error.message);
+    });
   };
 
   const updateUserPermissions = (userId: string, newAllowedModules: string[]) => {
@@ -688,13 +743,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     );
 
-    if (currentUser && currentUser.id === userId) {
-      setCurrentUser(prev => prev ? { ...prev, allowedModules: newAllowedModules } : null);
-    }
-
     if (targetUser) {
-      supabase.from('users').update({ allowed_modules: newAllowedModules }).eq('email', targetUser.email.toLowerCase()).then(({ error }) => {
-        if (error) console.warn('Supabase update permissions notice:', error.message);
+      supabase.from('users').update({ allowed_modules: newAllowedModules }).eq('id', userId).then(({ error }) => {
+        if (error) console.error('Supabase permissions update error:', error.message);
       });
     }
   };
@@ -713,6 +764,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isFinancialPrivacyEnabled,
         toggleFinancialPrivacy,
         login,
+        loginDirectWithPassword,
         requestOtp,
         verifyOtp,
         updateUserPassword,
@@ -721,7 +773,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addWhitelistUser,
         toggleUserStatus,
         deleteWhitelistUser,
-        updateUserPermissions
+        updateUserPermissions,
       }}
     >
       {children}
