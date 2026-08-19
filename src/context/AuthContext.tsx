@@ -120,8 +120,18 @@ const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
     roleTitleDisplay = 'Super Admin (Deputi Direktur)';
   }
 
+  let modules: string[] = defaultAllowed;
+  const rawMods = row.allowed_modules || row.allowedModules;
+  if (rawMods) {
+    if (Array.isArray(rawMods)) {
+      modules = rawMods;
+    } else if (typeof rawMods === 'string') {
+      try { modules = JSON.parse(rawMods); } catch (e) { modules = defaultAllowed; }
+    }
+  }
+
   return {
-    id: String(row.id),
+    id: String(row.id || ('wl-' + row.email)),
     email: row.email,
     name: row.full_name || row.name || (row.email === 'yusrilznl@gmail.com' ? 'Yusril Zainal' : 'User Gudang'),
     role: isSuper ? 'SUPER_ADMIN' : role,
@@ -129,7 +139,7 @@ const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
     status: row.status || 'AKTIF',
     registeredDate: row.created_at || row.registeredDate || new Date().toISOString().substring(0, 10),
     passwordHash: row.password_hash || row.passwordHash || 'password123',
-    allowedModules: isSuper ? ALL_MODULES : (row.allowed_modules || row.allowedModules || defaultAllowed)
+    allowedModules: isSuper ? ALL_MODULES : modules
   };
 };
 
