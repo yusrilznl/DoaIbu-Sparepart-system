@@ -88,6 +88,16 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (/^\d{6}$/.test(pastedData)) {
+      const digits = pastedData.split('');
+      setOtpDigits(digits);
+      otpInputRefs.current[5]?.focus();
+    }
+  };
+
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
       otpInputRefs.current[index - 1]?.focus();
@@ -328,8 +338,9 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Email Inbox Notice */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center text-xs font-bold text-emerald-800">
-              📩 Buka inbox email Anda untuk melihat 6-digit kode OTP keamanan.
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center text-xs font-bold text-emerald-800 space-y-0.5">
+              <p>📩 Masukkan 6-digit kode token OTP dari inbox email Anda pada form di bawah ini.</p>
+              <p className="text-[10px] text-emerald-600 font-semibold">(Tanpa mengklik link — masukkan 6 angka secara manual)</p>
             </div>
 
             {loginError && (
@@ -351,6 +362,7 @@ export const LoginPage: React.FC = () => {
                     value={digit}
                     onChange={e => handleOtpInputChange(index, e.target.value)}
                     onKeyDown={e => handleOtpKeyDown(index, e)}
+                    onPaste={handleOtpPaste}
                     className="w-11 h-12 text-center font-mono font-black text-lg text-black bg-slate-50 border border-slate-300 rounded-xl focus:border-[#0B3C85] focus:bg-white focus:outline-none transition shadow-2xs"
                   />
                 ))}

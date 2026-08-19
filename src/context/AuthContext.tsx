@@ -447,7 +447,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: cleanEmail,
           options: {
             shouldCreateUser: false,
-          }
+          },
         });
         if (otpErr) {
           console.warn('Supabase signInWithOtp notice:', otpErr.message);
@@ -490,35 +490,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyOtp = async (emailInput: string, inputOtp: string): Promise<boolean> => {
     const cleanEmail = emailInput.trim().toLowerCase();
+    const otpCodeInput = inputOtp.trim();
 
-    // 1. Verify via Supabase Auth API
+    // 1. Verify 6-digit token using Supabase Auth API
     let isSupabaseVerified = false;
     try {
       const { data, error } = await supabase.auth.verifyOtp({
         email: cleanEmail,
-        token: inputOtp.trim(),
+        token: otpCodeInput,
         type: 'email',
       });
-      if (!error && data?.session) {
+      if (!error && (data?.session || data?.user)) {
         isSupabaseVerified = true;
       }
     } catch (err: any) {
       console.warn('Supabase verifyOtp notice:', err);
     }
 
-    // 2. Check local OTP desk log entry fallback
+    // 2. Check local active OTP desk entry fallback
     const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
-    const isLocalOtpValid = activeOtpEntry && activeOtpEntry.otpCode === inputOtp.trim();
+    const isLocalOtpValid = activeOtpEntry && activeOtpEntry.otpCode === otpCodeInput;
 
     if (!isSupabaseVerified && !isLocalOtpValid) {
-      const errorMsg = 'Kode OTP yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email kembali.';
+      const errorMsg = 'Kode OTP 6-digit yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email kembali.';
       setLoginError(errorMsg);
       addSecurityLog(
         cleanEmail,
         'FAILED_WRONG_OTP',
         'Verifikasi OTP Gagal',
         true,
-        `Percobaan verifikasi kode OTP salah: "${inputOtp}"`
+        `Percobaan verifikasi kode OTP salah: "${otpCodeInput}"`
       );
       return false;
     }
@@ -547,7 +548,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'SUCCESS',
       'Login Berhasil (OTP Valid)',
       false,
-      `Autentikasi verifikasi OTP sukses sebagai ${matchedUser.roleTitle}`
+      `Autentikasi verifikasi 6-digit OTP sukses sebagai ${matchedUser.roleTitle}`
     );
 
     return true;
