@@ -101,7 +101,7 @@ interface AuthContextType {
   toggleFinancialPrivacy: () => void;
   login: (email: string, pass: string) => Promise<boolean>;
   requestOtp: (email: string, pass: string) => Promise<{ success: boolean; error?: string; user?: WhitelistRecord; otpCode?: string }>;
-  verifyOtp: (email: string, inputOtp: string) => boolean;
+  verifyOtp: (email: string, inputOtp: string) => Promise<boolean>;
   updateUserPassword: (email: string, newPassword: string) => Promise<boolean>;
   logout: () => void;
   clearLoginErrors: () => void;
@@ -441,14 +441,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: errorMsg };
       }
 
-      // Trigger Supabase OTP Email if available
+      // Trigger Supabase OTP Email with shouldCreateUser: false
       try {
-        await supabase.auth.signInWithOtp({ email: cleanEmail });
-      } catch (otpErr) {
-        console.warn('Supabase OTP Email trigger notice:', otpErr);
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email: cleanEmail,
+          options: {
+            shouldCreateUser: false,
+          }
+        });
+        if (otpErr) {
+          console.warn('Supabase signInWithOtp notice:', otpErr.message);
+        }
+      } catch (otpErr: any) {
+        console.warn('Supabase OTP Email trigger notice:', otpErr.message);
       }
 
-      // Generate 6-digit OTP code for verification
+      // Generate 6-digit OTP code for Desk Bantuan verification
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       const now = new Date();
       const createdAt = now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 8);
@@ -480,11 +488,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verifyOtp = (emailInput: string, inputOtp: string): boolean => {
+  const verifyOtp = async (emailInput: string, inputOtp: string): Promise<boolean> => {
     const cleanEmail = emailInput.trim().toLowerCase();
-    const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
 
-    if (!activeOtpEntry || activeOtpEntry.otpCode !== inputOtp.trim()) {
+    // 1. Verify via Supabase Auth API
+    let isSupabaseVerified = false;
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: inputOtp.trim(),
+        type: 'email',
+      });
+      if (!error && data?.session) {
+        isSupabaseVerified = true;
+      }
+    } catch (err: any) {
+      console.warn('Supabase verifyOtp notice:', err);
+    }
+
+    // 2. Check local OTP desk log entry fallback
+    const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
+    const isLocalOtpValid = activeOtpEntry && activeOtpEntry.otpCode === inputOtp.trim();
+
+    if (!isSupabaseVerified && !isLocalOtpValid) {
       const errorMsg = 'Kode OTP yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email kembali.';
       setLoginError(errorMsg);
       addSecurityLog(
@@ -510,7 +536,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       allowedModules: isSuper ? ALL_MODULES : (matchedUser.allowedModules || ['dashboard', 'catalog', 'opname'])
     };
 
-    setActiveOtps(prev => prev.map(o => o.id === activeOtpEntry.id ? { ...o, isUsed: true } : o));
+    if (activeOtpEntry) {
+      setActiveOtps(prev => prev.map(o => o.id === activeOtpEntry.id ? { ...o, isUsed: true } : o));
+    }
     setCurrentUser(userProfile);
     clearLoginErrors();
 

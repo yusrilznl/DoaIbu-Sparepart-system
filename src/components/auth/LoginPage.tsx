@@ -94,7 +94,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleVerifyOtpSubmit = (e: React.FormEvent) => {
+  const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullOtp = otpDigits.join('');
 
@@ -103,16 +103,23 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const success = verifyOtp(email, fullOtp);
-    if (success) {
-      showToast('Verifikasi OTP berhasil! Membuka Dashboard Gudang...', 'success');
-    } else {
-      const attempts = failedOtpAttempts + 1;
-      setFailedOtpAttempts(attempts);
-      if (attempts >= 3) {
-        showToast('Sesi terkunci karena 3x salah memasukkan kode OTP!', 'error');
-        setStep('CREDENTIALS');
+    setIsLoading(true);
+    try {
+      const success = await verifyOtp(email, fullOtp);
+      if (success) {
+        showToast('Verifikasi OTP berhasil! Membuka Dashboard Gudang...', 'success');
+      } else {
+        const attempts = failedOtpAttempts + 1;
+        setFailedOtpAttempts(attempts);
+        if (attempts >= 3) {
+          showToast('Sesi terkunci karena 3x salah memasukkan kode OTP! Anda dapat mencoba login kembali.', 'error');
+          setStep('CREDENTIALS');
+        }
       }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
