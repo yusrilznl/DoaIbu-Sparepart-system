@@ -99,6 +99,7 @@ interface AuthContextType {
   toggleUserStatus: (id: string) => void;
   deleteWhitelistUser: (id: string) => void;
   updateUserPermissions: (userId: string, newAllowedModules: string[]) => void;
+  logActivity: (actionLabel: string, notes?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -298,7 +299,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   const toggleFinancialPrivacy = () => {
-    setIsFinancialPrivacyEnabled(prev => !prev);
+    setIsFinancialPrivacyEnabled(prev => {
+      const next = !prev;
+      logActivity('Privasi Finansial', `Mengubah mode privasi angka finansial HPP/Profit menjadi ${next ? 'Tersembunyi (Hide)' : 'Tampil (Show)'}`);
+      return next;
+    });
   };
 
   const addSecurityLog = (
@@ -325,7 +330,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       notes
     };
 
-    setSecurityLogs(prev => [newLog, ...prev]);
+    setSecurityLogs(prev => {
+      const next = [newLog, ...prev.slice(0, 499)];
+      localStorage.setItem(LOCAL_STORAGE_SECURITY_LOGS_KEY, JSON.stringify(next));
+      return next;
+    });
 
     supabase.from('security_logs').insert([{
       email_attempted: emailAttempted,
@@ -339,6 +348,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }]).then(({ error }) => {
       if (error) console.warn('Supabase security_logs insert notice:', error.message);
     });
+  };
+
+  const logActivity = (actionLabel: string, notes?: string) => {
+    const userEmail = currentUser?.email || 'system@doaibusparepart.com';
+    const userName = currentUser?.name || 'User';
+    const roleTitle = currentUser?.roleTitle || '';
+
+    addSecurityLog(
+      userEmail,
+      'SUCCESS',
+      actionLabel,
+      false,
+      notes || `${userName} (${roleTitle}) melakukan aksi: ${actionLabel}`
+    );
   };
 
   const clearLoginErrors = () => {
@@ -838,6 +861,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toggleUserStatus,
         deleteWhitelistUser,
         updateUserPermissions,
+        logActivity,
       }}
     >
       {children}

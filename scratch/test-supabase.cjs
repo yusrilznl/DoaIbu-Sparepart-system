@@ -5,9 +5,13 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function cleanTestUser() {
-  await supabase.from('users').delete().eq('email', 'test.karyawan@doaibusparepart.com');
-  console.log('Cleaned test user.');
+async function listUsers() {
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) {
+    console.error('Error fetching users:', error);
+  } else {
+    console.log('Current Supabase users:', JSON.stringify(data, null, 2));
+  }
 }
 
-cleanTestUser();
+listUsers();

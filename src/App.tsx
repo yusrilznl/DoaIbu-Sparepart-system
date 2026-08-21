@@ -20,7 +20,7 @@ import { SparePart } from './types/inventory';
 import { isSuperAdminRole } from './types/auth';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated, currentUser, logActivity } = useAuth();
   const { parts, showToast } = useInventory();
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -35,6 +35,18 @@ const AppContent: React.FC = () => {
   }
 
   const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+
+  const TAB_NAMES: Record<string, string> = {
+    dashboard: 'Dashboard Overview',
+    catalog: 'Katalog Sparepart & Stok',
+    outbound: 'Barang Keluar (Surat Jalan)',
+    inbound: 'Barang Masuk (Restock)',
+    opname: 'Stock Opname & Scanner',
+    reports: 'Laporan Mutasi & Stok',
+    security: 'Keamanan & Whitelist User',
+    audit_log: 'Audit Trail & Activity Log',
+    audit: 'Audit Trail & Activity Log'
+  };
 
   const handleNavigate = (tab: string, partId?: string) => {
     // 1. Security Check
@@ -61,6 +73,13 @@ const AppContent: React.FC = () => {
         setActiveTab('dashboard');
         return;
       }
+    }
+
+    if (activeTab !== tab) {
+      logActivity(
+        `Navigasi Menu: ${TAB_NAMES[tab] || tab}`,
+        `User ${currentUser?.name} (${currentUser?.roleTitle}) membuka modul ${TAB_NAMES[tab] || tab}`
+      );
     }
 
     setActiveTab(tab);
