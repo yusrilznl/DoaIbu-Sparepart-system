@@ -49,7 +49,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ transaction, onClose
         </div>
 
         {/* PRINTABLE SURAT JALAN PAPER AREA */}
-        <div className="p-4 sm:p-6 border border-slate-300 rounded-2xl bg-white space-y-5 text-slate-900 font-sans print:border-none print:p-0">
+        <div className="p-4 sm:p-6 border border-slate-300 rounded-2xl bg-white space-y-5 text-slate-900 font-sans printable-area print:border-none print:p-0">
           {/* Header Kop Surat */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b-2 border-slate-900 pb-4 gap-3">
             <DoaIbuLogo size="md" showSubtitle={true} />
