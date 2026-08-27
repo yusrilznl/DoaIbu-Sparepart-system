@@ -8,6 +8,7 @@ import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { LocationMutationModal } from './LocationMutationModal';
+import { ImageZoomModal } from '../common/ImageZoomModal';
 
 interface CatalogTableProps {
   onSelectForOutbound: (partId: string) => void;
@@ -32,6 +33,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   const [inspectingPart, setInspectingPart] = useState<SparePart | null>(null);
   const [barcodePrintPart, setBarcodePrintPart] = useState<SparePart | null>(null);
   const [locationMutationPart, setLocationMutationPart] = useState<SparePart | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; title: string; subTitle?: string } | null>(null);
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const shouldSensorFinancialData = !isSuperAdmin || isFinancialPrivacyEnabled;
@@ -92,16 +94,19 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
       p.stokMin
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvString = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     link.setAttribute('download', `Master_Sparepart_DoaIbu_${new Date().toISOString().substring(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    showToast(`Data Master Sparepart (${filteredParts.length} item) berhasil diexport ke CSV!`, 'success');
+    showToast(`Data Master Sparepart (${filteredParts.length} item) berhasil diunduh!`, 'success');
   };
 
   return (
@@ -253,16 +258,29 @@ console.log("Data Part:", part);
                         <div className="flex items-center gap-3">
                   {/* KODE BARU - PASTI MUNCIUL & TAHAN ERROR */}
 {/* Kolom Foto Sparepart - Support Array gambar & string fotoProduk */}
-<div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
-  {(() => {
-    // Ambil URL gambar dari array gambar[0] atau string fotoProduk/foto/imageUrl
-    const p = part as any;
-    const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
-      ? p.gambar[0] 
-      : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
+{(() => {
+  const p = part as any;
+  const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
+    ? p.gambar[0] 
+    : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
 
-    if (imgSrc) {
-      return (
+  return (
+    <div 
+      onClick={() => {
+        if (imgSrc) {
+          setZoomedImage({
+            src: imgSrc,
+            title: part.namaSparepart,
+            subTitle: `Part No: ${part.kodeItem} | Brand: ${part.brand} | Rak: ${part.lokasiRak}`
+          });
+        }
+      }}
+      className={`w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs ${
+        imgSrc ? 'cursor-pointer hover:border-[#0B3C85] hover:scale-105 transition' : ''
+      }`}
+      title={imgSrc ? 'Klik untuk memperbesar foto produk' : 'Default Foto'}
+    >
+      {imgSrc ? (
         <img 
           src={imgSrc} 
           alt={part.namaSparepart} 
@@ -271,12 +289,12 @@ console.log("Data Part:", part);
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
-      );
-    }
-
-    return <Layers className="w-5 h-5 text-slate-400" />;
-  })()}
-</div>
+      ) : (
+        <Layers className="w-5 h-5 text-slate-400" />
+      )}
+    </div>
+  );
+})()}
                           <div>
                             <span className="font-mono font-black text-black text-sm block leading-none">{part.kodeItem}</span>
                             {part.oemNumber && (
@@ -472,6 +490,16 @@ console.log("Data Part:", part);
         }}
         title="📷 Pemindai Barcode Katalog & Smart OCR"
       />
+
+      {/* Product Image Lightbox Zoom Modal */}
+      {zoomedImage && (
+        <ImageZoomModal
+          src={zoomedImage.src}
+          title={zoomedImage.title}
+          subTitle={zoomedImage.subTitle}
+          onClose={() => setZoomedImage(null)}
+        />
+      )}
     </div>
   );
 };

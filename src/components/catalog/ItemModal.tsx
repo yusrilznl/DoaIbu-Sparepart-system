@@ -31,7 +31,13 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   const [hargaTokopedia, setHargaTokopedia] = useState(initialPart?.hargaTokopedia || initialPart?.hargaJual || 0);
   const [adminFeeTokopediaPercent, setAdminFeeTokopediaPercent] = useState(initialPart?.adminFeeTokopediaPercent || 8.0);
 
-  const [fotoProduk, setFotoProduk] = useState(initialPart?.fotoProduk || '');
+  const initialFoto = initialPart
+    ? (Array.isArray((initialPart as any).gambar) && (initialPart as any).gambar.length > 0
+        ? (initialPart as any).gambar[0]
+        : (initialPart.fotoProduk || (initialPart as any).foto || (initialPart as any).imageUrl || (typeof (initialPart as any).gambar === 'string' ? (initialPart as any).gambar : '')))
+    : '';
+
+  const [fotoProduk, setFotoProduk] = useState<string>(initialFoto);
   const [deskripsi, setDeskripsi] = useState(initialPart?.deskripsi || '');
 
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
@@ -87,7 +93,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
       adminFeeShopeePercent: Number(adminFeeShopeePercent),
       hargaTokopedia: Number(hargaTokopedia),
       adminFeeTokopediaPercent: Number(adminFeeTokopediaPercent),
-      fotoProduk: fotoProduk.trim(),
+      fotoProduk: fotoProduk.trim() || initialFoto || '',
       deskripsi: deskripsi.trim(),
       terakhirDiupdate: new Date().toISOString()
     };

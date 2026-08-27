@@ -4,6 +4,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { X, ArrowUpRight, ArrowDownToLine, Image as ImageIcon, History, Info, Tag, ShoppingBag, Calculator, Lock } from 'lucide-react';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
+import { ImageZoomModal } from '../common/ImageZoomModal';
 
 interface DrawerProps {
   part: SparePart | null;
@@ -23,6 +24,7 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
 
   const [activeTab, setActiveTab] = useState<'INFO' | 'HISTORY'>('INFO');
   const [showBarcodeModal, setShowBarcodeModal] = useState<boolean>(false);
+  const [showZoomModal, setShowZoomModal] = useState<boolean>(false);
 
   if (!part) return null;
 
@@ -108,16 +110,33 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
               <>
                 {/* Product Photo Preview Card */}
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 shadow-2xs">
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
-                    {part.fotoProduk ? (
-                      <img src={part.fotoProduk} alt={part.kodeItem} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center p-2 text-slate-400">
-                        <ImageIcon className="w-10 h-10 mx-auto text-slate-300 mb-1" />
-                        <span className="text-[10px] font-bold block text-slate-400">Default Foto</span>
+                  {(() => {
+                    const p = part as any;
+                    const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0)
+                      ? p.gambar[0]
+                      : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
+
+                    return (
+                      <div 
+                        onClick={() => {
+                          if (imgSrc) setShowZoomModal(true);
+                        }}
+                        className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-xs ${
+                          imgSrc ? 'cursor-pointer hover:border-[#0B3C85] hover:scale-105 transition' : ''
+                        }`}
+                        title={imgSrc ? 'Klik untuk memperbesar foto' : 'Default Foto'}
+                      >
+                        {imgSrc ? (
+                          <img src={imgSrc} alt={part.kodeItem} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center p-2 text-slate-400">
+                            <ImageIcon className="w-10 h-10 mx-auto text-slate-300 mb-1" />
+                            <span className="text-[10px] font-bold block text-slate-400">Default Foto</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                   <div className="space-y-1 text-center sm:text-left">
                     <h4 className="font-black text-slate-900 text-base leading-tight">{part.namaSparepart}</h4>
                     <p className="text-xs text-[#0B3C85] font-extrabold">Brand: {part.brand}</p>
@@ -291,6 +310,16 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
         <BarcodeLabelModal
           part={part}
           onClose={() => setShowBarcodeModal(false)}
+        />
+      )}
+
+      {/* Image Lightbox Zoom Modal */}
+      {showZoomModal && (
+        <ImageZoomModal
+          src={(Array.isArray((part as any).gambar) && (part as any).gambar.length > 0) ? (part as any).gambar[0] : (part.fotoProduk || (part as any).foto || '')}
+          title={part.namaSparepart}
+          subTitle={`Part No: ${part.kodeItem} | Brand: ${part.brand}`}
+          onClose={() => setShowZoomModal(false)}
         />
       )}
     </>
