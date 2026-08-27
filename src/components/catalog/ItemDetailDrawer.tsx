@@ -59,7 +59,7 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
         />
 
         {/* Drawer Panel */}
-        <div className="relative w-full max-w-lg bg-white h-full shadow-2xl z-10 flex flex-col animate-in slide-in-from-right duration-200">
+        <div className="relative w-full max-w-lg bg-white h-full shadow-2xl z-10 flex flex-col animate-in slide-in-from-right duration-200 no-print print:hidden">
           {/* Header */}
           <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <div>

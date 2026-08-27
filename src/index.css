@@ -30,8 +30,9 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Bulletproof Web & Thermal Print CSS - Isolate Printable Document Only */
+/* Thermal & Document Print CSS - Bulletproof for iOS AirPrint, Android & Desktop */
 @media print {
+  /* 1. Reset html & body height and background */
   html, body {
     background: white !important;
     color: black !important;
@@ -39,43 +40,54 @@
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
-  /* Hide all non-printable background elements, navbars, sidebars, and main lists */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Show ONLY the designated printable document */
-  .printable-area,
-  .printable-area * {
-    visibility: visible !important;
-  }
-
-  .printable-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 10mm !important;
-    background: white !important;
-    color: black !important;
-    box-shadow: none !important;
-    border: none !important;
-    z-index: 999999 !important;
-  }
-
-  .no-print,
-  button,
+  /* 2. COMPLETELY REMOVE main content table, navbar, sidebar, drawers & buttons from layout height */
+  #root > div > nav,
+  #root > div > div > aside,
+  #root > div > div > main,
+  main,
   nav,
   aside,
-  header {
+  header,
+  footer,
+  .no-print,
+  .print\:hidden,
+  button {
     display: none !important;
+  }
+
+  /* 3. Remove fixed overlay backdrop blur & flexbox bounds of modal container */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 4. Display printable container ONLY on 1 single page without extra pages */
+  .printable-area {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   @page {
     size: auto;
-    margin: 8mm;
+    margin: 5mm;
   }
 }
