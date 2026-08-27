@@ -231,14 +231,13 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                 <th className="py-3.5 px-4 text-right min-w-[120px]">Harga Toko</th>
                 <th className="py-3.5 px-4 text-center min-w-[130px]">Harga Shopee</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Tokopedia/TikTok</th>
-                <th className="py-3.5 px-4 text-center min-w-[100px]">Stok Realtime</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Aksi Operasional</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
               {filteredParts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-slate-400 font-semibold whitespace-nowrap">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold whitespace-nowrap">
                     Tidak ada sparepart yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -349,17 +348,6 @@ console.log("Data Part:", part);
                         ) : (
                           <span className="text-emerald-800">{formatIdr(part.hargaTokopedia || part.hargaJual * 1.08)}</span>
                         )}
-                      </td>
-
-                      {/* Stock Level */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">
-                        <span className={`inline-flex items-center justify-center font-mono font-black px-3 py-1 rounded-full text-xs border ${
-                          isLowStock
-                            ? 'bg-red-100 text-red-700 border-red-300 animate-pulse'
-                            : 'bg-slate-100 text-slate-900 border-slate-300'
-                        }`}>
-                          {part.stokRealtime} {part.satuan}
-                        </span>
                       </td>
 
                       {/* Action Buttons */}

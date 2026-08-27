@@ -30,7 +30,7 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Thermal & Document Print CSS - Bulletproof for iOS AirPrint, Android & Desktop */
+/* Thermal & Document Print CSS - Fixed for iOS AirPrint, Android & Desktop */
 @media print {
   /* 1. Reset html & body height and background */
   html, body {
@@ -44,11 +44,7 @@
     overflow: visible !important;
   }
 
-  /* 2. COMPLETELY REMOVE main content table, navbar, sidebar, drawers & buttons from layout height */
-  #root > div > nav,
-  #root > div > div > aside,
-  #root > div > div > main,
-  main,
+  /* 2. Hide UI controls, navbars, sidebars, headers, footers & action buttons */
   nav,
   aside,
   header,
@@ -59,28 +55,44 @@
     display: none !important;
   }
 
-  /* 3. Remove fixed overlay backdrop blur & flexbox bounds of modal container */
-  .fixed.inset-0 {
-    position: static !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
-    backdrop-filter: none !important;
+  /* 3. Hide non-modal table background wrapper inside main */
+  main > div:not(.fixed) {
+    display: none !important;
   }
 
-  /* 4. Display printable container ONLY on 1 single page without extra pages */
+  /* 4. Make modal overlay backdrop a clean full-page container */
+  .fixed.inset-0 {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+    z-index: 999999 !important;
+    display: block !important;
+  }
+
+  /* 5. Printable area layout */
+  .printable-area,
+  .printable-area * {
+    visibility: visible !important;
+  }
+
   .printable-area {
     display: block !important;
     position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 auto !important;
+    padding: 10px !important;
     border: none !important;
     box-shadow: none !important;
+    background: white !important;
+    color: black !important;
     page-break-after: avoid !important;
     page-break-before: avoid !important;
     page-break-inside: avoid !important;
