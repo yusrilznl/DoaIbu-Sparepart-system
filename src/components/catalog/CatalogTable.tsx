@@ -283,6 +283,15 @@ console.log("Data Part:", part);
                             {part.oemNumber && (
                               <span className="text-[10px] text-slate-500 font-mono block mt-1">OEM: {part.oemNumber}</span>
                             )}
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1 font-mono font-black px-2 py-0.5 rounded-md text-[10px] border shadow-2xs ${
+                                isLowStock
+                                  ? 'bg-red-100 text-red-700 border-red-300 animate-pulse'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}>
+                                📦 Stok: {part.stokRealtime} {part.satuan}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </td>
