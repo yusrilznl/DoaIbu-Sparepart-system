@@ -122,7 +122,7 @@ const AppContent: React.FC = () => {
         onNavigate={handleNavigate}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 w-full max-w-full">
         <Sidebar
           activeTab={activeTab}
           setActiveTab={handleNavigate}
@@ -130,7 +130,7 @@ const AppContent: React.FC = () => {
           onCloseMobile={() => setIsSidebarOpenMobile(false)}
         />
 
-        <main className="flex-1 p-3 sm:p-6 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
+        <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full space-y-6 min-w-0">
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <KpiCards onNavigate={handleNavigate} />
