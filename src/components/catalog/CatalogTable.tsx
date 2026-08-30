@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { SparePart, TurnoverStatus } from '../../types/inventory';
 import { isSuperAdminRole } from '../../types/auth';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, Upload, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
 import { ItemModal } from './ItemModal';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
@@ -20,8 +20,9 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   onSelectForOutbound,
   onSelectForInbound
 }) => {
-  const { parts, deleteSparePart, showToast } = useInventory();
+  const { parts, updateSparePart, deleteSparePart, showToast } = useInventory();
   const { currentUser, isFinancialPrivacyEnabled } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
@@ -110,8 +111,71 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
     showToast(`Data Master Sparepart (${filteredParts.length} item) berhasil diunduh!`, 'success');
   };
 
+  // CSV Import Handler for Bulk Updating HPP & Prices
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r\n|\n/);
+      if (lines.length < 2) {
+        showToast('File CSV kosong atau format tidak valid!', 'error');
+        return;
+      }
+
+      let updatedCount = 0;
+      lines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        
+        // Parse CSV values taking into account quotes
+        const rawCols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
+        if (rawCols.length >= 8) {
+          const clean = (val: string) => val ? val.replace(/^"|"$/g, '').trim() : '';
+          const kodeItem = clean(rawCols[1]);
+          const hargaBeli = parseFloat(clean(rawCols[7])) || 0;
+          const hargaJual = parseFloat(clean(rawCols[8])) || 0;
+          const hargaShopee = parseFloat(clean(rawCols[9])) || 0;
+          const hargaTokopedia = parseFloat(clean(rawCols[10])) || 0;
+
+          const matchedPart = parts.find(p => p.kodeItem.toLowerCase() === kodeItem.toLowerCase());
+          if (matchedPart && (hargaBeli > 0 || hargaJual > 0)) {
+            updateSparePart(matchedPart.id, {
+              hargaBeli: hargaBeli > 0 ? hargaBeli : matchedPart.hargaBeli,
+              hargaJual: hargaJual > 0 ? hargaJual : matchedPart.hargaJual,
+              hargaShopee: hargaShopee > 0 ? hargaShopee : matchedPart.hargaShopee,
+              hargaTokopedia: hargaTokopedia > 0 ? hargaTokopedia : matchedPart.hargaTokopedia
+            });
+            updatedCount++;
+          }
+        }
+      });
+
+      if (updatedCount > 0) {
+        showToast(`⚡ Berhasil memperbarui HPP & Harga untuk ${updatedCount} sparepart sekaligus!`, 'success');
+      } else {
+        showToast('Tidak ada data HPP yang cocok atau berubah dari file CSV.', 'info');
+      }
+
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Hidden File Input for CSV Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImportCsv}
+        accept=".csv,.txt"
+        className="hidden"
+      />
+
       {/* Top Header & Quick Create */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
@@ -131,12 +195,23 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           >
             <Camera className="w-4 h-4 text-emerald-400" /> Pindai Barcode Kamera
           </button>
+
           <button
             onClick={handleExportCsv}
             className="px-3.5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
+            title="Unduh seluruh data sparepart ke file Excel / CSV"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-200" /> Export Excel / CSV
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" /> Export Excel
           </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
+            title="Unggah file Excel / CSV untuk mengisi / meng-update HPP 96 sparepart sekaligus"
+          >
+            <Upload className="w-4 h-4 text-amber-200" /> Import HPP (CSV)
+          </button>
+
           <button
             onClick={() => {
               setEditingPart(null);
