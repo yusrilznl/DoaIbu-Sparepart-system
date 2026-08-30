@@ -141,7 +141,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({ part, onCl
               <div>
                 <span className="text-[9px] font-bold text-slate-500 block">HARGA JUAL TOKO</span>
                 <span className="font-mono font-black text-sm text-emerald-800">
-                  {shouldSensorFinancialData ? 'Rp •••••••' : formatIdr(part.hargaJual)}
+                  {formatIdr(part.hargaJual || 0)}
                 </span>
               </div>
 

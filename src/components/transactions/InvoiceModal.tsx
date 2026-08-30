@@ -108,10 +108,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ transaction, onClose
                       <td className="py-2.5 px-3 font-mono font-bold text-red-600 whitespace-nowrap">{item.lokasiRak}</td>
                       <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900 whitespace-nowrap">{qty} {item.satuan}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap">
-                        {shouldSensorFinancialData ? 'Rp •••••••' : formatIdr(price)}
+                        {formatIdr(price)}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 whitespace-nowrap">
-                        {shouldSensorFinancialData ? 'Rp •••••••' : formatIdr(subtotal)}
+                        {formatIdr(subtotal)}
                       </td>
                     </tr>
                   );

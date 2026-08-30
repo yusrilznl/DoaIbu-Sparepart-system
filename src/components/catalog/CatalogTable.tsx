@@ -87,10 +87,10 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
       `"${p.brand}"`,
       `"${p.lokasiRak}"`,
       `"${p.satuan}"`,
-      shouldSensorFinancialData ? 'SENSORD' : p.hargaBeli || 0,
-      shouldSensorFinancialData ? 'SENSORD' : p.hargaJual || 0,
-      shouldSensorFinancialData ? 'SENSORD' : p.hargaShopee || 0,
-      shouldSensorFinancialData ? 'SENSORD' : p.hargaTokopedia || 0,
+      shouldSensorHpp ? 'SENSORED' : p.hargaBeli || 0,
+      p.hargaJual || 0,
+      p.hargaShopee || 0,
+      p.hargaTokopedia || 0,
       p.stokRealtime,
       p.stokMin
     ]);
@@ -153,11 +153,11 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center font-bold">
-            {shouldSensorFinancialData ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
+            {shouldSensorHpp ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
           </div>
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Nilai Aset Stok (HPP)</p>
-            {shouldSensorFinancialData ? (
+            {shouldSensorHpp ? (
               <p className="text-xl font-black text-amber-600 font-mono mt-0.5">Rp ••••••••• (Disensor)</p>
             ) : (
               <p className="text-2xl font-black text-slate-900 mt-0.5">{formatIdr(totalAssetValuationHpp)}</p>
@@ -167,15 +167,11 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
 
         <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-xs">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold">
-            {shouldSensorFinancialData ? <Lock className="w-6 h-6 text-amber-600" /> : <TrendingUp className="w-6 h-6" />}
+            <TrendingUp className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
             <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Potensi Omset Gudang (Harga Toko)</p>
-            {shouldSensorFinancialData ? (
-              <p className="text-xl font-black text-amber-600 font-mono mt-0.5">Rp ••••••••• (Disensor)</p>
-            ) : (
-              <p className="text-2xl font-black text-emerald-700 mt-0.5">{formatIdr(totalOmsetPotensialJual)}</p>
-            )}
+            <p className="text-2xl font-black text-emerald-700 mt-0.5">{formatIdr(totalOmsetPotensialJual)}</p>
           </div>
         </div>
       </div>

@@ -442,11 +442,7 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono font-bold whitespace-nowrap">
-                        {shouldSensorFinancialData ? (
-                          <span className="text-amber-700 font-black tracking-widest text-[11px]">Rp •••••••</span>
-                        ) : (
-                          <span className="text-emerald-700">{formatIdr(item.hargaJual)}</span>
-                        )}
+                        <span className="text-emerald-700">{formatIdr(item.hargaJual)}</span>
                       </td>
 
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
