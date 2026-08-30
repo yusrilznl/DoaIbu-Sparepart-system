@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { SparePart, TurnoverStatus } from '../../types/inventory';
+import { isSuperAdminRole } from '../../types/auth';
 import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
 import { ItemModal } from './ItemModal';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
@@ -35,8 +36,8 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   const [locationMutationPart, setLocationMutationPart] = useState<SparePart | null>(null);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; title: string; subTitle?: string } | null>(null);
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-  const shouldSensorFinancialData = !isSuperAdmin || isFinancialPrivacyEnabled;
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+  const shouldSensorHpp = !isSuperAdminCategory || isFinancialPrivacyEnabled;
 
   // Extract unique brands & racks
   const uniqueBrands = Array.from(new Set(parts.map(p => p.brand)));
@@ -330,10 +331,10 @@ console.log("Data Part:", part);
                         </span>
                       </td>
 
-                      {/* HPP / Modal (Sensored for Non-Super-Admins) */}
+                      {/* HPP / Modal (Sensored for Non-Super-Admins or Privacy Mode) */}
                       <td className="py-3.5 px-4 text-right font-mono font-bold whitespace-nowrap min-w-[120px]">
-                        {shouldSensorFinancialData ? (
-                          <span className="text-amber-700 font-black tracking-widest text-[11px]" title="HPP disensor untuk kerahasiaan staf">
+                        {shouldSensorHpp ? (
+                          <span className="text-amber-700 font-black tracking-widest text-[11px]" title="HPP Modal disensor untuk kerahasiaan staf gudang">
                             Rp •••••••
                           </span>
                         ) : (
@@ -343,29 +344,21 @@ console.log("Data Part:", part);
 
                       {/* Harga Toko Offline */}
                       <td className="py-3.5 px-4 text-right font-mono font-black whitespace-nowrap min-w-[120px]">
-                        {shouldSensorFinancialData ? (
-                          <span className="text-amber-700 font-black tracking-widest text-[11px]">Rp •••••••</span>
-                        ) : (
-                          <span className="text-emerald-700">{formatIdr(part.hargaJual || 0)}</span>
-                        )}
+                        <span className="text-emerald-700">{formatIdr(part.hargaJual || 0)}</span>
                       </td>
 
                       {/* Harga Shopee */}
                       <td className="py-3.5 px-4 text-center font-mono font-black whitespace-nowrap min-w-[130px]">
-                        {shouldSensorFinancialData ? (
-                          <span className="text-amber-700 font-black tracking-widest text-[11px]">Rp •••••••</span>
-                        ) : (
-                          <span className="text-orange-600">{formatIdr(part.hargaShopee || part.hargaJual * 1.085)}</span>
-                        )}
+                        <span className="text-orange-600">
+                          {formatIdr(part.hargaShopee || (part.hargaJual ? Math.round(part.hargaJual * 1.085) : 0))}
+                        </span>
                       </td>
 
                       {/* Harga Tokopedia / TikTok */}
                       <td className="py-3.5 px-4 text-center font-mono font-black whitespace-nowrap min-w-[140px]">
-                        {shouldSensorFinancialData ? (
-                          <span className="text-amber-700 font-black tracking-widest text-[11px]">Rp •••••••</span>
-                        ) : (
-                          <span className="text-emerald-800">{formatIdr(part.hargaTokopedia || part.hargaJual * 1.08)}</span>
-                        )}
+                        <span className="text-emerald-800">
+                          {formatIdr(part.hargaTokopedia || (part.hargaJual ? Math.round(part.hargaJual * 1.08) : 0))}
+                        </span>
                       </td>
 
                       {/* Action Buttons */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SparePart } from '../../types/inventory';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { isSuperAdminRole } from '../../types/auth';
 import { X, ArrowUpRight, ArrowDownToLine, Image as ImageIcon, History, Info, Tag, ShoppingBag, Calculator, Lock } from 'lucide-react';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
 import { ImageZoomModal } from '../common/ImageZoomModal';
@@ -28,8 +29,8 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
 
   if (!part) return null;
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-  const shouldSensorHpp = !isSuperAdmin || isFinancialPrivacyEnabled;
+  const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
+  const shouldSensorHpp = !isSuperAdminCategory || isFinancialPrivacyEnabled;
 
   const isLowStock = part.stokRealtime <= part.stokMin;
 

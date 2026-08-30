@@ -157,7 +157,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isUnregisteredEmail, setIsUnregisteredEmail] = useState<boolean>(false);
   const [unregisteredEmailInput, setUnregisteredEmailInput] = useState<string>('');
 
-  const [isFinancialPrivacyEnabled, setIsFinancialPrivacyEnabled] = useState<boolean>(true);
+  const [isFinancialPrivacyEnabled, setIsFinancialPrivacyEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('doaibu_financial_privacy') === 'true';
+  });
 
   const [whitelistUsers, setWhitelistUsers] = useState<WhitelistRecord[]>(() => {
     const savedWhitelist = localStorage.getItem(LOCAL_STORAGE_WHITELIST_KEY);
@@ -290,9 +292,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem(LOCAL_STORAGE_AUTH_KEY, JSON.stringify(currentUser));
-      if (!isSuperAdminRole(currentUser.role)) {
-        setIsFinancialPrivacyEnabled(true);
-      }
     } else {
       localStorage.removeItem(LOCAL_STORAGE_AUTH_KEY);
     }
@@ -301,6 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleFinancialPrivacy = () => {
     setIsFinancialPrivacyEnabled(prev => {
       const next = !prev;
+      localStorage.setItem('doaibu_financial_privacy', String(next));
       logActivity('Privasi Finansial', `Mengubah mode privasi angka finansial HPP/Profit menjadi ${next ? 'Tersembunyi (Hide)' : 'Tampil (Show)'}`);
       return next;
     });
