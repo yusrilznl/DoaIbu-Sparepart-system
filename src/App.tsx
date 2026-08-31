@@ -122,7 +122,7 @@ const AppContent: React.FC = () => {
         onNavigate={handleNavigate}
       />
 
-      <div className="flex flex-1 w-full max-w-full">
+      <div className="flex flex-1 w-full max-w-full items-start">
         <Sidebar
           activeTab={activeTab}
           setActiveTab={handleNavigate}
