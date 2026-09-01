@@ -2,7 +2,7 @@ import React from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminRole } from '../../types/auth';
-import { Package, AlertTriangle, ArrowUpRight, ArrowDownToLine, DollarSign, Lock, TrendingDown, BarChart3, Activity, Eye, EyeOff } from 'lucide-react';
+import { Package, AlertTriangle, ArrowUpRight, ArrowDownToLine, DollarSign, Lock, TrendingDown, BarChart3, Activity, Eye, EyeOff, Layers } from 'lucide-react';
 
 interface KpiCardsProps {
   onNavigate?: (tab: string) => void;
