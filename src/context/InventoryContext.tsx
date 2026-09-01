@@ -122,7 +122,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load Parts from Supabase DB on Mount
+  // Load & 2-Way Auto-Sync Parts from Supabase DB on Mount
   useEffect(() => {
     const loadParts = async () => {
       let currentLocal: SparePart[] = [];
@@ -142,6 +142,44 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         const { data, error } = await supabase.from('products').select('*');
         if (!error && data && data.length > 0) {
           const mappedParts = data.map(mapDbToSparePart);
+          
+          if (currentLocal.length > 0) {
+            const merged = [...mappedParts];
+            let needsDbSync = false;
+
+            currentLocal.forEach(localItem => {
+              const dbIndex = merged.findIndex(dbItem => dbItem.kodeItem.toLowerCase() === localItem.kodeItem.toLowerCase());
+              if (dbIndex === -1) {
+                merged.push(localItem);
+                needsDbSync = true;
+              } else {
+                if ((localItem.hargaBeli || 0) > 0 && (merged[dbIndex].hargaBeli || 0) === 0) {
+                  merged[dbIndex] = {
+                    ...merged[dbIndex],
+                    hargaBeli: localItem.hargaBeli,
+                    hargaJual: localItem.hargaJual || merged[dbIndex].hargaJual,
+                    hargaShopee: localItem.hargaShopee || merged[dbIndex].hargaShopee,
+                    hargaTokopedia: localItem.hargaTokopedia || merged[dbIndex].hargaTokopedia
+                  };
+                  needsDbSync = true;
+                }
+              }
+            });
+
+            setParts(merged);
+            localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(merged));
+            setIsLoaded(true);
+
+            if (needsDbSync) {
+              const dbPayload = merged.map(mapSparePartToDb);
+              supabase.from('products').upsert(dbPayload).then(({ error: syncErr }) => {
+                if (syncErr) console.warn('Background Supabase auto-sync notice:', syncErr.message);
+                else console.log('✅ Auto-synced local parts & prices to Supabase Cloud DB!');
+              });
+            }
+            return;
+          }
+
           setParts(mappedParts);
           localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(mappedParts));
           setIsLoaded(true);
