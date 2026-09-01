@@ -126,9 +126,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_AUTH_KEY = 'optipart_doaibu_auth_user_v7';
-const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v7';
-const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v7';
+const LOCAL_STORAGE_AUTH_KEY = 'optipart_doaibu_auth_user_v8';
+const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v8';
+const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v8';
 
 const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
   const emailLower = (row.email || '').toLowerCase();
