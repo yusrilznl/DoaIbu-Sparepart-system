@@ -19,6 +19,28 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
     allowedModules: ALL_MODULES
   },
   {
+    id: 'wl-owner-david',
+    email: 'davidwahyudi733@gmail.com',
+    name: 'David Wahyudi',
+    role: 'SUPER_ADMIN',
+    roleTitle: 'Super Admin (Owner)',
+    status: 'AKTIF',
+    registeredDate: '2026-01-01 00:00',
+    passwordHash: 'password123',
+    allowedModules: ALL_MODULES
+  },
+  {
+    id: 'wl-owner-rismauji',
+    email: 'rismauji12@gmail.com',
+    name: 'Muhammad Rismauji',
+    role: 'OWNER',
+    roleTitle: 'Owner (Pendiri Doa Ibu)',
+    status: 'AKTIF',
+    registeredDate: '2026-01-01 00:00',
+    passwordHash: 'password123',
+    allowedModules: ALL_MODULES
+  },
+  {
     id: 'wl-[#0B3C85]',
     email: 'deputi.direktur@doaibusparepart.com',
     name: 'Deputi Direktur Doa Ibu',
@@ -109,16 +131,27 @@ const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v7';
 const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v7';
 
 const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
-  const role = (row.role || 'ADMIN_GUDANG') as UserRole;
+  const emailLower = (row.email || '').toLowerCase();
+  let role = (row.role || 'ADMIN_GUDANG') as UserRole;
+  if (emailLower === 'rismauji12@gmail.com') role = 'OWNER';
+  if (emailLower === 'davidwahyudi733@gmail.com' || emailLower === 'yusrilznl@gmail.com') role = 'SUPER_ADMIN';
+
   const isSuper = isSuperAdminRole(role);
   let defaultAllowed = ['dashboard', 'catalog', 'opname'];
   if (isSuper) defaultAllowed = ALL_MODULES;
   else if (role === 'ADMIN_GUDANG') defaultAllowed = ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports'];
   else if (role === 'AUDITOR') defaultAllowed = AUDITOR_MODULES;
 
-  let roleTitleDisplay = row.role_title || row.roleTitle || 'Staf Gudang';
-  if (row.email === 'yusrilznl@gmail.com') {
-    roleTitleDisplay = 'Super Admin (Deputi Direktur)';
+  let roleTitleDisplay = row.role_title || row.roleTitle;
+  if (!roleTitleDisplay || roleTitleDisplay === 'Staf Gudang') {
+    if (emailLower === 'yusrilznl@gmail.com') roleTitleDisplay = 'Super Admin (Deputi Direktur)';
+    else if (emailLower === 'davidwahyudi733@gmail.com') roleTitleDisplay = 'Super Admin (Owner)';
+    else if (emailLower === 'rismauji12@gmail.com' || role === 'OWNER') roleTitleDisplay = 'Owner (Pendiri Doa Ibu)';
+    else if (role === 'SUPER_ADMIN') roleTitleDisplay = 'Super Admin';
+    else if (role === 'DEPUTI_DIREKTUR') roleTitleDisplay = 'Deputi Direktur';
+    else if (role === 'ADMIN_GUDANG') roleTitleDisplay = 'Head Stock Admin Gudang';
+    else if (role === 'AUDITOR') roleTitleDisplay = 'Auditor Internal';
+    else roleTitleDisplay = 'Staf Gudang';
   }
 
   let modules: string[] = defaultAllowed;
@@ -134,7 +167,7 @@ const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
   return {
     id: String(row.id || ('wl-' + row.email)),
     email: row.email,
-    name: row.full_name || row.name || (row.email === 'yusrilznl@gmail.com' ? 'Yusril Zainal' : 'User Gudang'),
+    name: row.full_name || row.name || (emailLower === 'rismauji12@gmail.com' ? 'Muhammad Rismauji' : emailLower === 'yusrilznl@gmail.com' ? 'Yusril Zainal' : 'User Gudang'),
     role: isSuper ? 'SUPER_ADMIN' : role,
     roleTitle: roleTitleDisplay,
     status: row.status || 'AKTIF',
