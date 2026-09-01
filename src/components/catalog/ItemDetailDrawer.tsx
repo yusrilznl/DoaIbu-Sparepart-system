@@ -214,7 +214,7 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-bold text-slate-500 block">Total Nilai Aset Stok</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Inventory Valuation (Valuasi Persediaan)</span>
                       {shouldSensorHpp ? (
                         <span className="font-mono font-black text-xs text-amber-700 block mt-1">Rp ••••••• (Sensor)</span>
                       ) : (

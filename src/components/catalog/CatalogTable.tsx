@@ -231,7 +231,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             {shouldSensorHpp ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
           </div>
           <div>
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Nilai Aset Stok (HPP)</p>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Inventory Valuation (Valuasi Persediaan)</p>
             {shouldSensorHpp ? (
               <p className="text-xl font-black text-amber-600 font-mono mt-0.5">Rp ••••••••• (Disensor)</p>
             ) : (
