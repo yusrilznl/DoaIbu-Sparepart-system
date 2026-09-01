@@ -34,7 +34,7 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
     email: 'rismauji12@gmail.com',
     name: 'Muhammad Rismauji',
     role: 'OWNER',
-    roleTitle: 'Owner (Pendiri Doa Ibu)',
+    roleTitle: 'Owner',
     status: 'AKTIF',
     registeredDate: '2026-01-01 00:00',
     passwordHash: 'password123',
@@ -146,7 +146,7 @@ const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
   if (!roleTitleDisplay || roleTitleDisplay === 'Staf Gudang') {
     if (emailLower === 'yusrilznl@gmail.com') roleTitleDisplay = 'Super Admin (Deputi Direktur)';
     else if (emailLower === 'davidwahyudi733@gmail.com') roleTitleDisplay = 'Super Admin (Owner)';
-    else if (emailLower === 'rismauji12@gmail.com' || role === 'OWNER') roleTitleDisplay = 'Owner (Pendiri Doa Ibu)';
+    else if (emailLower === 'rismauji12@gmail.com' || role === 'OWNER') roleTitleDisplay = 'Owner';
     else if (role === 'SUPER_ADMIN') roleTitleDisplay = 'Super Admin';
     else if (role === 'DEPUTI_DIREKTUR') roleTitleDisplay = 'Deputi Direktur';
     else if (role === 'ADMIN_GUDANG') roleTitleDisplay = 'Head Stock Admin Gudang';
