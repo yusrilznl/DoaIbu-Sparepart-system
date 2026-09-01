@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-2">
                 {isFinancialPrivacyEnabled ? <EyeOff className="w-4 h-4 text-amber-700" /> : <Eye className="w-4 h-4 text-[#0B3C85]" />}
-                <span>{isFinancialPrivacyEnabled ? 'HPP & Margin Disensor' : 'Finansial Terbuka'}</span>
+                <span>{isFinancialPrivacyEnabled ? 'Hide Asset Value' : 'Show Asset Value'}</span>
               </div>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/60">Toggle</span>
             </button>

@@ -118,12 +118,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
               {isFinancialPrivacyEnabled ? (
                 <>
                   <EyeOff className="w-4 h-4 text-amber-700" />
-                  <span className="text-[11px]">HPP Disensor</span>
+                  <span className="text-[11px]">Hide Asset Value</span>
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4 text-[#0B3C85]" />
-                  <span className="text-[11px]">Finansial Terbuka</span>
+                  <span className="text-[11px]">Show Asset Value</span>
                 </>
               )}
             </button>
