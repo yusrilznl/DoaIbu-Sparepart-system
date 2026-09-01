@@ -39,8 +39,8 @@ const AppContent: React.FC = () => {
   const TAB_NAMES: Record<string, string> = {
     dashboard: 'Dashboard Overview',
     catalog: 'Katalog Sparepart & Stok',
-    outbound: 'Barang Keluar (Surat Jalan)',
-    inbound: 'Barang Masuk (Restock)',
+    outbound: 'Outbound / Goods Issue',
+    inbound: 'Inbound / Goods Receipt',
     opname: 'Stock Opname & Scanner',
     reports: 'Laporan Mutasi & Stok',
     security: 'Keamanan & Whitelist User',

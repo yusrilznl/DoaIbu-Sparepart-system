@@ -75,7 +75,7 @@ export const ReportsModule: React.FC = () => {
             <FileText className="w-6 h-6 text-[#0B3C85]" /> Laporan Mutasi & Audit Trail Transaksi
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Kearsipan lengkap penerimaan barang masuk & keluar (Tersimpan di Supabase DB)
+            Kearsipan lengkap penerimaan barang masuk & keluar — Encrypted & Immutable Audit Log
           </p>
         </div>
 
@@ -108,8 +108,8 @@ export const ReportsModule: React.FC = () => {
             className="bg-transparent font-extrabold text-slate-900 focus:outline-none"
           >
             <option value="ALL">Semua Mutasi</option>
-            <option value="MUTASI_KELUAR">📤 Barang Keluar (Surat Jalan)</option>
-            <option value="MUTASI_MASUK">📦 Barang Masuk (Restock)</option>
+            <option value="MUTASI_KELUAR">📤 Outbound / Goods Issue</option>
+            <option value="MUTASI_MASUK">📦 Inbound / Goods Receipt</option>
             <option value="STOCK_OPNAME">📋 Stock Opname</option>
           </select>
         </div>
@@ -134,7 +134,7 @@ export const ReportsModule: React.FC = () => {
               {filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
-                    Belum ada data transaksi tersimpan di Supabase DB.
+                    Belum ada data transaksi tersimpan.
                   </td>
                 </tr>
               ) : (
@@ -151,7 +151,7 @@ export const ReportsModule: React.FC = () => {
                           isOpname ? 'bg-amber-100 text-amber-800' :
                           isInbound ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
                         }`}>
-                          {isOpname ? '📋 Opname' : isInbound ? '📦 Restock Masuk' : '📤 Surat Jalan Keluar'}
+                          {isOpname ? '📋 Opname' : isInbound ? '📦 INBOUND / RECEIPT' : '📤 OUTBOUND / GOODS ISSUE'}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-slate-900">{tx.pelanggan}</td>

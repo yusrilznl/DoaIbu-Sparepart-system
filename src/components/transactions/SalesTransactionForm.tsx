@@ -309,7 +309,7 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-              PILIH / SCAN DUS PABRIK (COMBOBOX SEARCHABLE & SCANNER)
+              PILIH / SCAN DUS PABRIK
             </span>
 
             {salesChannel !== 'OFFLINE_STORE' && (
@@ -322,7 +322,7 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
           <div className="relative">
             <input
               type="text"
-              placeholder="Ketik nama / kode item / brand / rak untuk mencari..."
+              placeholder="Ketik nama, kode item, brand, atau scan barcode..."
               value={comboboxSearch}
               onChange={e => {
                 setComboboxSearch(e.target.value);

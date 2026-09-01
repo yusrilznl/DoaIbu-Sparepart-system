@@ -207,7 +207,7 @@ export const SecurityMonitoring: React.FC<SecurityMonitoringProps> = ({ defaultT
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Login Berhasil (OTP)</p>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Authenticated Sessions</p>
             <p className="text-2xl font-black text-emerald-600 mt-0.5">{successfulLoginsCount} Sesi Resmi</p>
           </div>
         </div>
@@ -217,7 +217,7 @@ export const SecurityMonitoring: React.FC<SecurityMonitoringProps> = ({ defaultT
             <AlertOctagon className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <p className="text-xs font-extrabold text-red-600 uppercase tracking-wider">Percobaan Akses Ilegal</p>
+            <p className="text-xs font-extrabold text-red-600 uppercase tracking-wider">Unauthorized Access Attempts</p>
             <p className="text-2xl font-black text-red-700 mt-0.5">{suspiciousAttemptsCount} Alert Dideteksi</p>
           </div>
         </div>
@@ -279,7 +279,7 @@ export const SecurityMonitoring: React.FC<SecurityMonitoringProps> = ({ defaultT
                 <tr className="bg-slate-900 text-white uppercase tracking-wider font-extrabold">
                   <th className="py-3 px-4">No</th>
                   <th className="py-3 px-4">Nama User</th>
-                  <th className="py-3 px-4">Email Terdaftar (Whitelist)</th>
+                  <th className="py-3 px-4">User Account</th>
                   <th className="py-3 px-4">Role & Jabatan</th>
                   <th className="py-3 px-4 text-center">Modul Diizinkan</th>
                   <th className="py-3 px-4 text-center">Status Sesi</th>

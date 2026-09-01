@@ -205,14 +205,6 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           </button>
 
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
-            title="Unggah file Excel / CSV untuk mengisi / meng-update HPP 96 sparepart sekaligus"
-          >
-            <Upload className="w-4 h-4 text-amber-200" /> Import HPP (CSV)
-          </button>
-
-          <button
             onClick={() => {
               setEditingPart(null);
               setIsItemModalOpen(true);
@@ -231,7 +223,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             {shouldSensorHpp ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
           </div>
           <div>
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Inventory Valuation (Valuasi Persediaan)</p>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">INVENTORY VALUATION</p>
             {shouldSensorHpp ? (
               <p className="text-xl font-black text-amber-600 font-mono mt-0.5">Rp ••••••••• (Disensor)</p>
             ) : (
@@ -245,7 +237,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             <TrendingUp className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Potensi Omset Gudang (Harga Toko)</p>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Market Value</p>
             <p className="text-2xl font-black text-emerald-700 mt-0.5">{formatIdr(totalOmsetPotensialJual)}</p>
           </div>
         </div>
@@ -304,7 +296,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                 <th className="py-3.5 px-4 min-w-[200px]">Nama Sparepart</th>
                 <th className="py-3.5 px-4 min-w-[110px]">Brand</th>
                 <th className="py-3.5 px-4 min-w-[110px]">Lokasi Rak</th>
-                <th className="py-3.5 px-4 text-right min-w-[120px]">HPP (Modal)</th>
+                <th className="py-3.5 px-4 text-right min-w-[120px]">Unit Cost</th>
                 <th className="py-3.5 px-4 text-right min-w-[120px]">Harga Toko</th>
                 <th className="py-3.5 px-4 text-center min-w-[130px]">Harga Shopee</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Tokopedia/TikTok</th>

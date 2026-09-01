@@ -52,7 +52,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 2: Stok Kritis Alert */}
+        {/* Card 2: Low Stock Alert */}
         <div
           onClick={() => onNavigate && onNavigate('opname')}
           className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
@@ -60,7 +60,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           }`}
         >
           <div>
-            <span className="text-[10px] font-black text-red-600 uppercase tracking-wider block">⚠ STOK KRITIS</span>
+            <span className="text-[10px] font-black text-red-600 uppercase tracking-wider block">⚠ Low Stock Alert</span>
             <p className="text-2xl font-black text-red-600 mt-1">{lowStockCount} Item</p>
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">
               {lowStockCount > 0 ? 'Butuh Restock Segera!' : 'Semua Aman ✓'}
@@ -71,7 +71,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 3: Overstock Alert */}
+        {/* Card 3: Overstock Level */}
         <div
           onClick={() => onNavigate && onNavigate('catalog')}
           className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
@@ -79,7 +79,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           }`}
         >
           <div>
-            <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider block">OVERSTOCK</span>
+            <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider block">Overstock Level</span>
             <p className={`text-2xl font-black mt-1 ${overstockCount > 0 ? 'text-amber-600' : 'text-slate-400'}`}>{overstockCount} Item</p>
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">
               {overstockCount > 0 ? 'Melebihi Batas Maks' : 'Tidak Ada Overstock'}
@@ -108,19 +108,19 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
             </div>
             <p className="text-[11px] font-bold text-slate-500 mt-0.5">Masuk / Keluar</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center group-hover:bg-slate-200 transition">
-            <BarChart3 className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center group-hover:bg-blue-100 transition">
+            <Layers className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Row 2: Financial & Audit Summary with Interactive Lock Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Valuasi Aset HPP */}
+        {/* Inventory Valuation */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between relative group">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">INVENTORY VALUATION (VALUASI PERSEDIAAN)</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">INVENTORY VALUATION</span>
               {isSuperAdminCategory && (
                 <button
                   onClick={toggleFinancialPrivacy}
@@ -136,7 +136,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
             ) : (
               <p className="text-xl font-black text-slate-900 mt-1">{formatIdr(totalAssetValuationHpp)}</p>
             )}
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Total Modal HPP Fisik</p>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Total Cost Basis (At Cost)</p>
           </div>
 
           <button
@@ -159,11 +159,11 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
           </button>
         </div>
 
-        {/* Estimasi Potensi Profit */}
+        {/* Estimated Profit Potential */}
         <div className="bg-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between relative group">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">ESTIMASI POTENSI PROFIT</span>
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">ESTIMATED PROFIT POTENTIAL</span>
               {isSuperAdminCategory && (
                 <button
                   onClick={toggleFinancialPrivacy}
@@ -179,7 +179,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
             ) : (
               <p className="text-xl font-black text-emerald-700 mt-1">{formatIdr(estimatedPotentialProfit)}</p>
             )}
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Margin Jual Toko − HPP</p>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Potential Gross Profit Margin</p>
           </div>
 
           <button

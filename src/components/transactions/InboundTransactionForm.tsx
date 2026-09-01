@@ -268,13 +268,13 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
         {/* Item Selection Combobox Container */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-            PILIH / SCAN BARANG DITERIMA (COMBOBOX SEARCHABLE & SCANNER)
+            PILIH / SCAN BARANG DITERIMA
           </span>
 
           <div className="relative">
             <input
               type="text"
-              placeholder="Ketik nama / kode item / brand untuk memfilter..."
+              placeholder="Ketik nama, kode item, brand, atau scan barcode..."
               value={comboboxSearch}
               onChange={e => {
                 setComboboxSearch(e.target.value);

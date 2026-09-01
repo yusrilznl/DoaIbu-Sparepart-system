@@ -31,8 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
     { id: 'catalog', label: 'Master Sparepart & Rak', icon: Package, badge: parts.length },
-    { id: 'outbound', label: 'Barang Keluar (Surat Jalan)', icon: ArrowUpRight },
-    { id: 'inbound', label: 'Barang Masuk (Restock)', icon: ArrowDownToLine },
+    { id: 'outbound', label: 'Outbound / Goods Issue', icon: ArrowUpRight },
+    { id: 'inbound', label: 'Inbound / Goods Receipt', icon: ArrowDownToLine },
     { id: 'opname', label: 'Stock Opname & Scanner', icon: ClipboardCheck, badge: lowStockCount > 0 ? `${lowStockCount} Alert` : undefined, isBadgeWarning: lowStockCount > 0 },
     { id: 'reports', label: 'Laporan Mutasi & Keuangan', icon: FileText },
     { id: 'audit_log', label: 'Audit Trail & Activity Log', icon: Activity, isAuditOnly: true },
