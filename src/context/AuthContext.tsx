@@ -41,48 +41,15 @@ const INITIAL_WHITELIST: WhitelistRecord[] = [
     allowedModules: ALL_MODULES
   },
   {
-    id: 'wl-[#0B3C85]',
-    email: 'deputi.direktur@doaibusparepart.com',
-    name: 'Deputi Direktur Doa Ibu',
-    role: 'DEPUTI_DIREKTUR',
-    roleTitle: 'Deputi Direktur',
-    status: 'AKTIF',
-    registeredDate: '2026-01-15 08:30',
-    passwordHash: 'password123',
-    allowedModules: ALL_MODULES
-  },
-  {
-    id: 'wl-2',
-    email: 'admin.gudang@doaibusparepart.com',
-    name: 'Budi Santoso',
+    id: 'wl-admin-dony',
+    email: 'saputratimur123@gmail.com',
+    name: 'Dony',
     role: 'ADMIN_GUDANG',
     roleTitle: 'Head Stock Admin Gudang',
     status: 'AKTIF',
-    registeredDate: '2026-02-01 09:15',
+    registeredDate: '2026-01-15 08:30',
     passwordHash: 'password123',
     allowedModules: ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports']
-  },
-  {
-    id: 'wl-3',
-    email: 'petugas.mgl@doaibusparepart.com',
-    name: 'Agus Subekti',
-    role: 'PETUGAS_GUDANG',
-    roleTitle: 'Petugas Stock Opname & Scan',
-    status: 'AKTIF',
-    registeredDate: '2026-03-12 14:20',
-    passwordHash: 'password123',
-    allowedModules: ['dashboard', 'catalog', 'opname']
-  },
-  {
-    id: 'wl-4',
-    email: 'auditor@doaibusparepart.com',
-    name: 'Rini Kurniawati (Auditor)',
-    role: 'AUDITOR',
-    roleTitle: 'Auditor Internal (Read-Only)',
-    status: 'AKTIF',
-    registeredDate: '2026-06-01 08:00',
-    passwordHash: 'password123',
-    allowedModules: AUDITOR_MODULES
   }
 ];
 
@@ -126,9 +93,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_AUTH_KEY = 'optipart_doaibu_auth_user_v8';
-const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v8';
-const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v8';
+const LOCAL_STORAGE_AUTH_KEY = 'optipart_doaibu_auth_user_v9';
+const LOCAL_STORAGE_WHITELIST_KEY = 'optipart_doaibu_whitelist_v9';
+const LOCAL_STORAGE_SECURITY_LOGS_KEY = 'optipart_doaibu_security_logs_v9';
 
 const mapDbRowToWhitelist = (row: any): WhitelistRecord => {
   const emailLower = (row.email || '').toLowerCase();
