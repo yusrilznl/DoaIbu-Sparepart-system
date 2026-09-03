@@ -67,7 +67,7 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 // 1. Mapping DB -> React State
 const mapDbToSparePart = (row: any): SparePart => ({
   id: String(row.id),
-  kodeItem: row.kode_item || row.kodeItem || '',
+  kodeItem: row.kode_item || row.kodeItem || row.part_number || row.partNumber || 'PART-UNKNOWN',
   namaSparepart: row.nama_sparepart || row.namaSparepart || '',
   brand: row.brand || 'GENUINE',
   kategori: row.kategori || row.kategori_mesin || row.kategoriMesin || 'Umum',
@@ -157,7 +157,9 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
             let needsDbSync = false;
 
             currentLocal.forEach(localItem => {
-              const dbIndex = merged.findIndex(dbItem => dbItem.kodeItem.toLowerCase() === localItem.kodeItem.toLowerCase());
+              if (!localItem || !(localItem.kodeItem || (localItem as any).partNumber)) return;
+              const localCode = (localItem.kodeItem || (localItem as any).partNumber || '').toLowerCase();
+              const dbIndex = merged.findIndex(dbItem => (dbItem.kodeItem || '').toLowerCase() === localCode);
               if (dbIndex === -1) {
                 merged.push(localItem);
                 needsDbSync = true;

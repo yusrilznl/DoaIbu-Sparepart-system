@@ -54,11 +54,15 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   };
 
   const filteredParts = parts.filter(part => {
+    if (!part) return false;
+    const itemCode = part.kodeItem || (part as any).partNumber || '';
+    if (!itemCode) return false;
+
     const matchesSearch =
-      part.kodeItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      part.namaSparepart.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (part.oemNumber && part.oemNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      part.lokasiRak.toLowerCase().includes(searchQuery.toLowerCase());
+      itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (part.namaSparepart || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (part.oemNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (part.lokasiRak || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesBrand = selectedBrand === 'ALL' || part.brand === selectedBrand;
     const matchesRack = selectedRack === 'ALL' || part.lokasiRak === selectedRack;
