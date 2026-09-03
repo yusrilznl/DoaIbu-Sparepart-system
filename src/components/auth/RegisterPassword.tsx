@@ -21,7 +21,7 @@ export const RegisterPassword: React.FC<RegisterPasswordProps> = ({ onBackToLogi
   // CAPTCHA verification state
   const [isCaptchaVerified, setIsCaptchaVerified] = useState<boolean>(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -52,7 +52,7 @@ export const RegisterPassword: React.FC<RegisterPasswordProps> = ({ onBackToLogi
     }
 
     // 4. Update Password
-    const success = updateUserPassword(email, password);
+    const success = await updateUserPassword(email, password);
     if (success) {
       const nowStr = new Date().toLocaleString();
       showToast(`Password baru untuk ${email} berhasil disimpan!`, 'success');

@@ -8,7 +8,7 @@ export interface WhitelistRecord {
   roleTitle: string;
   status: 'AKTIF' | 'NONAKTIF';
   registeredDate: string;
-  passwordHash: string;
+  passwordHash?: string;
   allowedModules?: string[];
 }
 

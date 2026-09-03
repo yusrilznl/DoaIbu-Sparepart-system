@@ -23,6 +23,18 @@ export interface WhitelistUser {
   profile: UserProfile;
 }
 
+export interface WhitelistRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  roleTitle: string;
+  passwordHash?: string;
+  allowedModules: string[];
+  status: 'AKTIF' | 'NONAKTIF';
+  registeredDate: string;
+}
+
 export const isSuperAdminRole = (role?: string): boolean => {
   if (!role) return false;
   const r = role.toUpperCase();

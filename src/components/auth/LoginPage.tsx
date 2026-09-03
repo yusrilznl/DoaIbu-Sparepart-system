@@ -94,7 +94,7 @@ export const LoginPage: React.FC = () => {
         setFailedOtpAttempts(0);
         setOtpDigits(['', '', '', '', '', '']);
 
-        if (res.isOtpSent === false) {
+        if ((res as any).isOtpSent === false) {
           showToast('⚠️ Limit SMTP Supabase tercapai! Anda dapat menggunakan Kode Master 123456 atau Login dengan Password.', 'info');
         } else {
           showToast(`📩 Kode OTP 6-digit telah dikirim ke email ${email}. Masukkan kode angka tersebut di bawah ini!`, 'success');

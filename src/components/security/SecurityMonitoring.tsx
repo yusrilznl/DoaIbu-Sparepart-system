@@ -96,7 +96,8 @@ export const SecurityMonitoring: React.FC<SecurityMonitoringProps> = ({ defaultT
         role: newRole,
         roleTitle: newRoleTitle,
         status: 'AKTIF',
-        passwordHash: passwordToUse
+        passwordHash: passwordToUse,
+        allowedModules: ['dashboard', 'catalog', 'outbound', 'inbound', 'opname', 'reports']
       });
 
       showToast(`User "${emailFormatted}" (${newRoleTitle}) berhasil didaftarkan!`, 'success');

@@ -36,7 +36,7 @@ interface InventoryContextType {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   saveSparePart: (partData: Omit<SparePart, 'id' | 'terakhirDiupdate'>, existingId?: string) => SparePart;
   addSparePart: (partData: Omit<SparePart, 'id'>) => SparePart;
-  updateSparePart: (id: string, partData: Omit<SparePart, 'id'>) => SparePart;
+  updateSparePart: (id: string, partData: Partial<SparePart>) => SparePart;
   deleteSparePart: (id: string) => void;
   saveTransaction: (transactionData: Omit<Transaction, 'id' | 'createdDate'>) => Transaction;
   deleteTransaction: (id: string) => void;
@@ -409,8 +409,8 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     return saveSparePart(partData);
   };
 
-  const updateSparePart = (id: string, partData: Omit<SparePart, 'id'>): SparePart => {
-    return saveSparePart(partData, id);
+  const updateSparePart = (id: string, partData: Partial<SparePart>): SparePart => {
+    return saveSparePart(partData as any, id);
   };
 
   const deleteSparePart = (id: string) => {
