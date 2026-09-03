@@ -20,7 +20,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   onSelectForOutbound,
   onSelectForInbound
 }) => {
-  const { parts, updateSparePart, deleteSparePart, showToast, getGoodConditionReturnCount, exportFullBackup, importFullBackup } = useInventory();
+  const { parts, addSparePart, updateSparePart, deleteSparePart, showToast, getGoodConditionReturnCount, exportFullBackup, importFullBackup } = useInventory();
   const { currentUser, isFinancialPrivacyEnabled } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +112,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
     showToast(`Data Master Sparepart (${filteredParts.length} item) berhasil diunduh!`, 'success');
   };
 
-  // CSV Import Handler for Bulk Updating HPP & Prices
+  // CSV Import Handler for Bulk Creating & Updating Spareparts
   const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -129,36 +129,73 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
       }
 
       let updatedCount = 0;
+      let addedCount = 0;
+
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
         
-        // Parse CSV values taking into account quotes
-        const rawCols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
-        if (rawCols.length >= 8) {
+        // Parse CSV values handling commas inside quotes
+        const rawCols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
+        if (rawCols.length >= 4) {
           const clean = (val: string) => val ? val.replace(/^"|"$/g, '').trim() : '';
-          const kodeItem = clean(rawCols[1]);
+          
+          const kodeItem = clean(rawCols[1]) || clean(rawCols[0]);
+          if (!kodeItem || kodeItem.toLowerCase() === 'no' || kodeItem.toLowerCase() === 'kode item') return;
+
+          const oemNumber = clean(rawCols[2]) || '';
+          const namaSparepart = clean(rawCols[3]) || kodeItem;
+          const brand = clean(rawCols[4]) || 'FLEETGUARD';
+          const lokasiRak = clean(rawCols[5]) || 'A-01-01';
+          const satuan = clean(rawCols[6]) || 'PCS';
           const hargaBeli = parseFloat(clean(rawCols[7])) || 0;
           const hargaJual = parseFloat(clean(rawCols[8])) || 0;
           const hargaShopee = parseFloat(clean(rawCols[9])) || 0;
           const hargaTokopedia = parseFloat(clean(rawCols[10])) || 0;
+          const stokRealtime = parseInt(clean(rawCols[11])) || 0;
+          const stokMin = parseInt(clean(rawCols[12])) || 5;
 
           const matchedPart = parts.find(p => p.kodeItem.toLowerCase() === kodeItem.toLowerCase());
-          if (matchedPart && (hargaBeli > 0 || hargaJual > 0)) {
+          if (matchedPart) {
             updateSparePart(matchedPart.id, {
+              oemNumber: oemNumber || matchedPart.oemNumber,
+              namaSparepart: namaSparepart || matchedPart.namaSparepart,
+              brand: brand || matchedPart.brand,
+              lokasiRak: lokasiRak || matchedPart.lokasiRak,
+              satuan: satuan || matchedPart.satuan,
               hargaBeli: hargaBeli > 0 ? hargaBeli : matchedPart.hargaBeli,
               hargaJual: hargaJual > 0 ? hargaJual : matchedPart.hargaJual,
               hargaShopee: hargaShopee > 0 ? hargaShopee : matchedPart.hargaShopee,
-              hargaTokopedia: hargaTokopedia > 0 ? hargaTokopedia : matchedPart.hargaTokopedia
+              hargaTokopedia: hargaTokopedia > 0 ? hargaTokopedia : matchedPart.hargaTokopedia,
+              stokRealtime: stokRealtime > 0 ? stokRealtime : matchedPart.stokRealtime,
+              stokMin: stokMin > 0 ? stokMin : matchedPart.stokMin,
             });
             updatedCount++;
+          } else {
+            // Create New Sparepart automatically if not present!
+            addSparePart({
+              kodeItem,
+              oemNumber,
+              namaSparepart,
+              brand,
+              lokasiRak,
+              satuan,
+              hargaBeli,
+              hargaJual,
+              hargaShopee,
+              hargaTokopedia,
+              stokRealtime,
+              stokMin,
+              terakhirDiupdate: new Date().toISOString()
+            });
+            addedCount++;
           }
         }
       });
 
-      if (updatedCount > 0) {
-        showToast(`⚡ Berhasil memperbarui HPP & Harga untuk ${updatedCount} sparepart sekaligus!`, 'success');
+      if (addedCount > 0 || updatedCount > 0) {
+        showToast(`⚡ Sukses mengimpor data! ${addedCount} Sparepart Baru ditambahkan, ${updatedCount} diperbarui!`, 'success');
       } else {
-        showToast('Tidak ada data HPP yang cocok atau berubah dari file CSV.', 'info');
+        showToast('Format CSV tidak sesuai. Pastikan file di-export dari menu Export Excel.', 'info');
       }
 
       if (fileInputRef.current) fileInputRef.current.value = '';
