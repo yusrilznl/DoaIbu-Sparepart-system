@@ -41,6 +41,8 @@ interface InventoryContextType {
   saveTransaction: (transactionData: Omit<Transaction, 'id' | 'createdDate'>) => Transaction;
   deleteTransaction: (id: string) => void;
   addReturnRecord: (data: Omit<ReturnRecord, 'id' | 'noRetur' | 'tanggal' | 'status' | 'petugas'>) => ReturnRecord;
+  updateReturnRecord: (id: string, updatedData: Partial<ReturnRecord>) => void;
+  confirmReturnRecord: (id: string) => void;
   refurbishReturnItem: (returnId: string, refurbishData: { biayaRefurbish: number; hargaJualRefurbished: number; catatanRefurbish: string; restockToInventory?: boolean }) => void;
   getGoodConditionReturnCount: (partId: string) => number;
   recordStockOpname: (opnameItems: OpnameItem[], warehouseName: string, notes?: string) => void;
@@ -691,6 +693,18 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     return newRecord;
   };
 
+  // Update Return Record
+  const updateReturnRecord = (id: string, updatedData: Partial<ReturnRecord>) => {
+    setReturns(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    showToast('✅ Data retur berhasil diperbarui!', 'success');
+  };
+
+  // Confirm Return Record Status
+  const confirmReturnRecord = (id: string) => {
+    setReturns(prev => prev.map(r => r.id === id ? { ...r, status: 'TERKONFIRMASI' } : r));
+    showToast('✅ Status retur berhasil dikonfirmasi!', 'success');
+  };
+
   // Refurbish Return Item
   const refurbishReturnItem = (
     returnId: string,
@@ -761,6 +775,8 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         saveTransaction,
         deleteTransaction,
         addReturnRecord,
+        updateReturnRecord,
+        confirmReturnRecord,
         refurbishReturnItem,
         getGoodConditionReturnCount,
         recordStockOpname,

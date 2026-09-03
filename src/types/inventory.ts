@@ -160,7 +160,7 @@ export type ActivityAction =
   | 'TOGGLE_STATUS_USER';
 
 export type ReturnCondition = 'GOOD_CONDITION' | 'DEFECT_RUSAK';
-export type ReturnStatus = 'PROCESSED' | 'REFURBISHED' | 'SCRAPPED';
+export type ReturnStatus = 'PENDING' | 'TERKONFIRMASI' | 'REFURBISHED' | 'PROCESSED';
 
 export interface ReturnRecord {
   id: string;
@@ -177,14 +177,16 @@ export interface ReturnRecord {
   salesChannel: SalesChannel;
   noResiKirim: string;
   noResiRetur: string;
+  alasanRetur: string;
   
   biayaCheckout: number;
-  biayaRefund: number;
-  biayaPackingLoss: number;
-  biayaOngkirBbmLoss: number;
-  totalKerugianOperasional: number;
+  biayaRefund?: number;
+  biayaPackingLoss?: number;
+  biayaOngkirBbmLoss?: number;
+  totalKerugianOperasional?: number;
   
   kondisiBarang: ReturnCondition;
+  statusLokasiBarang: string;
   status: ReturnStatus;
   
   // Refurbished Details
