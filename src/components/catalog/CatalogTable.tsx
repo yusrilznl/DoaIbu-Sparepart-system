@@ -208,6 +208,22 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           </button>
 
           <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3.5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
+            title="Upload file Excel / CSV untuk menambahkan/meng-update ribuan sparepart sekaligus"
+          >
+            <Upload className="w-4 h-4 text-teal-200" /> 📥 Import Excel / CSV
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            onChange={handleImportCsv}
+          />
+
+          <button
             onClick={() => {
               setEditingPart(null);
               setIsItemModalOpen(true);
