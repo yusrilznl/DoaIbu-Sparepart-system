@@ -16,6 +16,7 @@ import { SecurityMonitoring } from './components/security/SecurityMonitoring';
 import { BarcodeScannerModal } from './components/common/BarcodeScannerModal';
 import { ItemDetailDrawer } from './components/catalog/ItemDetailDrawer';
 import { DraggableCameraFab } from './components/common/DraggableCameraFab';
+import { ReturnManagementModule } from './components/returns/ReturnManagementModule';
 import { SparePart } from './types/inventory';
 import { isSuperAdminRole } from './types/auth';
 
@@ -150,6 +151,7 @@ const AppContent: React.FC = () => {
 
           {activeTab === 'outbound' && <SalesTransactionForm preselectedPartId={preselectedPartId} />}
           {activeTab === 'inbound' && <InboundTransactionForm preselectedPartId={preselectedPartId} />}
+          {activeTab === 'return_management' && <ReturnManagementModule />}
           {activeTab === 'opname' && <StockOpnameModule />}
           {activeTab === 'reports' && <ReportsModule />}
 

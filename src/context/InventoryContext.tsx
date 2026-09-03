@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { SparePart, Transaction, OpnameItem, ActivityLog, ActivityAction, DiscrepancyLog, LocationMutation } from '../types/inventory';
+import { SparePart, Transaction, OpnameItem, ActivityLog, ActivityAction, DiscrepancyLog, LocationMutation, ReturnRecord } from '../types/inventory';
 import { INITIAL_SPAREPARTS, INITIAL_TRANSACTIONS } from '../mock/initialData';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -28,6 +28,7 @@ interface InventoryContextType {
   parts: SparePart[];
   warehouses: Warehouse[];
   transactions: Transaction[];
+  returns: ReturnRecord[];
   activityLogs: ActivityLog[];
   discrepancyLogs: DiscrepancyLog[];
   locationMutations: LocationMutation[];
@@ -39,6 +40,9 @@ interface InventoryContextType {
   deleteSparePart: (id: string) => void;
   saveTransaction: (transactionData: Omit<Transaction, 'id' | 'createdDate'>) => Transaction;
   deleteTransaction: (id: string) => void;
+  addReturnRecord: (data: Omit<ReturnRecord, 'id' | 'noRetur' | 'tanggal' | 'status' | 'petugas'>) => ReturnRecord;
+  refurbishReturnItem: (returnId: string, refurbishData: { biayaRefurbish: number; hargaJualRefurbished: number; catatanRefurbish: string; restockToInventory?: boolean }) => void;
+  getGoodConditionReturnCount: (partId: string) => number;
   recordStockOpname: (opnameItems: OpnameItem[], warehouseName: string, notes?: string) => void;
   recordLocationMutation: (mutation: Omit<LocationMutation, 'id' | 'timestamp'>) => void;
   logActivity: (action: ActivityAction, detail: string, opts?: { targetId?: string; targetLabel?: string; sebelum?: string; sesudah?: string; modul?: string }) => void;
@@ -49,6 +53,7 @@ interface InventoryContextType {
 
 const LOCAL_STORAGE_KEY_PARTS = 'optipart_doaibu_parts_v5';
 const LOCAL_STORAGE_KEY_TX = 'optipart_doaibu_tx_v5';
+const LOCAL_STORAGE_KEY_RETURNS = 'optipart_doaibu_returns_v5';
 const LOCAL_STORAGE_KEY_ACTIVITY = 'optipart_doaibu_activity_v5';
 const LOCAL_STORAGE_KEY_DISCREPANCY = 'optipart_doaibu_discrepancy_v5';
 const LOCAL_STORAGE_KEY_LOCATION = 'optipart_doaibu_location_v5';
@@ -246,6 +251,11 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     loadTransactions();
   }, []);
 
+  const [returns, setReturns] = useState<ReturnRecord[]>(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_RETURNS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [discrepancyLogs, setDiscrepancyLogs] = useState<DiscrepancyLog[]>([]);
   const [locationMutations, setLocationMutations] = useState<LocationMutation[]>([]);
@@ -259,6 +269,10 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(transactions));
   }, [transactions, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(returns));
+  }, [returns, isLoaded]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, visible: true });
@@ -624,12 +638,117 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(`✅ Mutasi lokasi ${mutationData.kodeItem}: ${mutationData.dariLokasi} → ${mutationData.keLokasi} berhasil dicatat!`, 'success');
   };
 
+  // Helper: Get Good Condition Return Count for a specific part
+  const getGoodConditionReturnCount = (partId: string) => {
+    return returns
+      .filter(r => r.partId === partId && r.kondisiBarang === 'GOOD_CONDITION')
+      .reduce((sum, r) => sum + r.qty, 0);
+  };
+
+  // Add New Return Record
+  const addReturnRecord = (data: Omit<ReturnRecord, 'id' | 'noRetur' | 'tanggal' | 'status' | 'petugas'>): ReturnRecord => {
+    const now = new Date();
+    const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const randStr = Math.floor(1000 + Math.random() * 9000).toString();
+    const noRetur = `RET-${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${randStr}`;
+
+    const newRecord: ReturnRecord = {
+      ...data,
+      id: `ret-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      noRetur,
+      tanggal: dateStr,
+      status: 'PROCESSED',
+      petugas: auth?.currentUser?.name || 'Admin Gudang',
+    };
+
+    setReturns(prev => [newRecord, ...prev]);
+
+    // If Good Condition, automatically restock to ready-to-sell inventory (+qty)
+    if (data.kondisiBarang === 'GOOD_CONDITION') {
+      setParts(prev => prev.map(p => {
+        if (p.id === data.partId) {
+          const updated = {
+            ...p,
+            stokRealtime: p.stokRealtime + data.qty,
+            terakhirDiupdate: new Date().toISOString()
+          };
+          supabase.from('products').upsert([mapSparePartToDb(updated)]).then(({ error }) => {
+            if (error) console.error('Supabase return restock error:', error.message);
+          });
+          return updated;
+        }
+        return p;
+      }));
+    }
+
+    logActivity(
+      'RETUR_BARANG',
+      `[RETURN] ${auth?.currentUser?.name || 'User'} mencatat Retur Online #${noRetur} (${data.salesChannel} - Resi: ${data.noResiRetur}) untuk ${data.kodeItem} (${data.qty} ${data.satuan}) - Kondisi: ${data.kondisiBarang === 'GOOD_CONDITION' ? 'Good Condition (Restocked)' : 'Cacat/Rusak (Afkir)'}`,
+      { targetId: data.partId, targetLabel: data.kodeItem, modul: 'return' }
+    );
+
+    showToast(`✅ Retur Online #${noRetur} berhasil dicatat! ${data.kondisiBarang === 'GOOD_CONDITION' ? `(+${data.qty} Stok Restock)` : '(Masuk Karantina)'}`, 'success');
+    return newRecord;
+  };
+
+  // Refurbish Return Item
+  const refurbishReturnItem = (
+    returnId: string,
+    refurbishData: { biayaRefurbish: number; hargaJualRefurbished: number; catatanRefurbish: string; restockToInventory?: boolean }
+  ) => {
+    const targetReturn = returns.find(r => r.id === returnId);
+    if (!targetReturn) return;
+
+    const nowStr = new Date().toLocaleDateString('id-ID');
+
+    setReturns(prev => prev.map(r => {
+      if (r.id === returnId) {
+        return {
+          ...r,
+          isRefurbished: true,
+          status: 'REFURBISHED',
+          biayaRefurbish: refurbishData.biayaRefurbish,
+          hargaJualRefurbished: refurbishData.hargaJualRefurbished,
+          catatanRefurbish: refurbishData.catatanRefurbish,
+          tanggalRefurbish: nowStr,
+        };
+      }
+      return r;
+    }));
+
+    if (refurbishData.restockToInventory) {
+      setParts(prev => prev.map(p => {
+        if (p.id === targetReturn.partId) {
+          const updated = {
+            ...p,
+            stokRealtime: p.stokRealtime + targetReturn.qty,
+            terakhirDiupdate: new Date().toISOString()
+          };
+          supabase.from('products').upsert([mapSparePartToDb(updated)]).then(({ error }) => {
+            if (error) console.error('Supabase refurbish restock error:', error.message);
+          });
+          return updated;
+        }
+        return p;
+      }));
+    }
+
+    logActivity(
+      'REFURBISH_ITEM',
+      `[RETURN] ${auth?.currentUser?.name || 'User'} melakukan Refurbish/Perbaikan barang retur ${targetReturn.kodeItem} (${targetReturn.noRetur}) - Biaya Ops: Rp ${refurbishData.biayaRefurbish.toLocaleString('id-ID')} — ${refurbishData.catatanRefurbish}`,
+      { targetId: targetReturn.partId, targetLabel: targetReturn.kodeItem, modul: 'return' }
+    );
+
+    showToast(`🔧 Perbaikan (Refurbished) ${targetReturn.kodeItem} berhasil dicatat!`, 'success');
+  };
+
   return (
     <InventoryContext.Provider
       value={{
         parts,
         warehouses,
         transactions,
+        returns,
         activityLogs,
         discrepancyLogs,
         locationMutations,
@@ -641,6 +760,9 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         deleteSparePart,
         saveTransaction,
         deleteTransaction,
+        addReturnRecord,
+        refurbishReturnItem,
+        getGoodConditionReturnCount,
         recordStockOpname,
         recordLocationMutation,
         logActivity,

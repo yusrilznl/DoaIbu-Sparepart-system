@@ -20,7 +20,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   onSelectForOutbound,
   onSelectForInbound
 }) => {
-  const { parts, updateSparePart, deleteSparePart, showToast } = useInventory();
+  const { parts, updateSparePart, deleteSparePart, showToast, getGoodConditionReturnCount } = useInventory();
   const { currentUser, isFinancialPrivacyEnabled } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -372,6 +372,11 @@ console.log("Data Part:", part);
                               }`}>
                                 📦 Stok: {part.stokRealtime} {part.satuan}
                               </span>
+                              {getGoodConditionReturnCount(part.id) > 0 && (
+                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded block mt-0.5" title="Total stok fisik hasil retur utuh yang sudah dimasukkan kembali ke rak">
+                                  🔄 Retur Utuh: {getGoodConditionReturnCount(part.id)} Pcs
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

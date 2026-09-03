@@ -20,7 +20,7 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
   onSelectForOutbound,
   onSelectForInbound
 }) => {
-  const { transactions } = useInventory();
+  const { transactions, getGoodConditionReturnCount } = useInventory();
   const { currentUser, isFinancialPrivacyEnabled } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'INFO' | 'HISTORY'>('INFO');
@@ -211,6 +211,11 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                       <span className={`font-mono font-black text-lg ${isLowStock ? 'text-red-600' : 'text-slate-900'}`}>
                         {part.stokRealtime} {part.satuan}
                       </span>
+                      {getGoodConditionReturnCount(part.id) > 0 && (
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded block mt-1">
+                          🔄 Retur Utuh: {getGoodConditionReturnCount(part.id)} Pcs
+                        </span>
+                      )}
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">

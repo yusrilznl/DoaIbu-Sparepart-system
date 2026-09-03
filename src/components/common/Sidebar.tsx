@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, ArrowUpRight, ArrowDownToLine, ClipboardCheck, FileText, X, ShieldCheck, LogOut, Eye, EyeOff, Activity } from 'lucide-react';
+import { LayoutDashboard, Package, ArrowUpRight, ArrowDownToLine, ClipboardCheck, FileText, X, ShieldCheck, LogOut, Eye, EyeOff, Activity, RotateCcw } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminRole } from '../../types/auth';
@@ -18,13 +18,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile = false,
   onCloseMobile
 }) => {
-  const { parts } = useInventory();
+  const { parts, returns } = useInventory();
   const { currentUser, securityLogs, logout, isFinancialPrivacyEnabled, toggleFinancialPrivacy } = useAuth();
 
   const [mobileSearch, setMobileSearch] = useState('');
 
   const lowStockCount = parts.filter(p => p.stokRealtime <= p.stokMin).length;
   const suspiciousCount = securityLogs.filter(l => l.isSuspicious).length;
+  const returnCount = returns.length;
 
   const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
 
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'catalog', label: 'Master Sparepart & Rak', icon: Package, badge: parts.length },
     { id: 'outbound', label: 'Outbound / Goods Issue', icon: ArrowUpRight },
     { id: 'inbound', label: 'Inbound / Goods Receipt', icon: ArrowDownToLine },
+    { id: 'return_management', label: 'Return Management', icon: RotateCcw, badge: returnCount > 0 ? `${returnCount} Paket` : undefined },
     { id: 'opname', label: 'Stock Opname & Scanner', icon: ClipboardCheck, badge: lowStockCount > 0 ? `${lowStockCount} Alert` : undefined, isBadgeWarning: lowStockCount > 0 },
     { id: 'reports', label: 'Laporan Mutasi & Keuangan', icon: FileText },
     { id: 'audit_log', label: 'Audit Trail & Activity Log', icon: Activity, isAuditOnly: true },

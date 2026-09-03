@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Activity, Search, Filter, Download, User, Clock, Layers,
   ArrowUpRight, ArrowDownRight, ClipboardCheck, MapPin,
-  ShieldCheck, UserPlus, Trash2, Settings, Eye
+  ShieldCheck, UserPlus, Trash2, Settings, Eye, RotateCcw, Wrench
 } from 'lucide-react';
 import { ActivityLog, ActivityAction } from '../../types/inventory';
 
@@ -16,13 +16,15 @@ const ACTION_CONFIG: Record<ActivityAction, { label: string; color: string; icon
   BARANG_KELUAR: { label: 'Barang Keluar', color: 'text-orange-700 bg-orange-50 border-orange-200', icon: <ArrowUpRight className="w-3.5 h-3.5" /> },
   STOCK_OPNAME: { label: 'Stock Opname', color: 'text-purple-700 bg-purple-50 border-purple-200', icon: <ClipboardCheck className="w-3.5 h-3.5" /> },
   MUTASI_LOKASI: { label: 'Mutasi Lokasi', color: 'text-amber-700 bg-amber-50 border-amber-200', icon: <MapPin className="w-3.5 h-3.5" /> },
+  RETUR_BARANG: { label: 'RETURN', color: 'text-red-800 bg-red-100 border-red-300 font-mono font-black', icon: <RotateCcw className="w-3.5 h-3.5" /> },
+  REFURBISH_ITEM: { label: 'REFURBISH', color: 'text-violet-800 bg-violet-100 border-violet-300 font-mono font-black', icon: <Wrench className="w-3.5 h-3.5" /> },
   EDIT_PERMISSION: { label: 'Edit Permission', color: 'text-violet-700 bg-violet-50 border-violet-200', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
   TAMBAH_USER: { label: 'Tambah User', color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <UserPlus className="w-3.5 h-3.5" /> },
   HAPUS_USER: { label: 'Hapus User', color: 'text-red-700 bg-red-50 border-red-200', icon: <Trash2 className="w-3.5 h-3.5" /> },
   TOGGLE_STATUS_USER: { label: 'Toggle Status User', color: 'text-amber-700 bg-amber-50 border-amber-200', icon: <User className="w-3.5 h-3.5" /> },
 };
 
-const MODUL_OPTIONS = ['semua', 'catalog', 'inbound', 'outbound', 'opname', 'security', 'system'];
+const MODUL_OPTIONS = ['semua', 'catalog', 'inbound', 'outbound', 'return', 'opname', 'security', 'system'];
 
 const SAMPLE_LOGS: ActivityLog[] = [
   {

@@ -59,7 +59,7 @@ export interface Transaction {
   noTransaksi: string;
   tanggal: string;
   createdDate?: string;
-  jenisTransaksi: 'MUTASI_MASUK' | 'MUTASI_KELUAR' | 'STOCK_OPNAME' | 'MUTASI_LOKASI';
+  jenisTransaksi: 'MUTASI_MASUK' | 'MUTASI_KELUAR' | 'STOCK_OPNAME' | 'MUTASI_LOKASI' | 'RETUR_ONLINE';
   salesChannel?: SalesChannel;
   gudangAsal: string;
   gudangTujuan?: string;
@@ -152,10 +152,52 @@ export type ActivityAction =
   | 'BARANG_KELUAR'
   | 'STOCK_OPNAME'
   | 'MUTASI_LOKASI'
+  | 'RETUR_BARANG'
+  | 'REFURBISH_ITEM'
   | 'EDIT_PERMISSION'
   | 'TAMBAH_USER'
   | 'HAPUS_USER'
   | 'TOGGLE_STATUS_USER';
+
+export type ReturnCondition = 'GOOD_CONDITION' | 'DEFECT_RUSAK';
+export type ReturnStatus = 'PROCESSED' | 'REFURBISHED' | 'SCRAPPED';
+
+export interface ReturnRecord {
+  id: string;
+  noRetur: string;
+  tanggal: string;
+  partId: string;
+  kodeItem: string;
+  namaSparepart: string;
+  brand: string;
+  lokasiRak: string;
+  satuan: string;
+  qty: number;
+  
+  salesChannel: SalesChannel;
+  noResiKirim: string;
+  noResiRetur: string;
+  
+  biayaCheckout: number;
+  biayaRefund: number;
+  biayaPackingLoss: number;
+  biayaOngkirBbmLoss: number;
+  totalKerugianOperasional: number;
+  
+  kondisiBarang: ReturnCondition;
+  status: ReturnStatus;
+  
+  // Refurbished Details
+  isRefurbished?: boolean;
+  biayaRefurbish?: number;
+  hargaJualRefurbished?: number;
+  catatanRefurbish?: string;
+  tanggalRefurbish?: string;
+  
+  petugas: string;
+  catatan?: string;
+  fotoBukti?: string;
+}
 
 export interface ActivityLog {
   id: string;
