@@ -198,9 +198,15 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Supabase fetch failed:', e);
       }
 
-      // Fallback jika Supabase DB belum ada baris
+      // Fallback jika Supabase DB belum ada baris / belum sync
       if (currentLocal.length > 0) {
         setParts(currentLocal);
+        // Otomatis sync & push seluruh data lokal ke Supabase Cloud DB secara silent
+        const dbPayload = currentLocal.map(mapSparePartToDb);
+        supabase.from('products').upsert(dbPayload).then(({ error }) => {
+          if (error) console.warn('Background Supabase sync notice:', error.message);
+          else console.log('✅ Local parts automatically pushed to Supabase Cloud DB!');
+        });
       } else {
         setParts(INITIAL_SPAREPARTS);
         localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(INITIAL_SPAREPARTS));

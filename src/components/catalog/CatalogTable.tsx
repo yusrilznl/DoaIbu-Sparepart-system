@@ -197,41 +197,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             <Camera className="w-4 h-4 text-emerald-400" /> Pindai Barcode Kamera
           </button>
 
-          <button
-            onClick={exportFullBackup}
-            className="px-3.5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
-            title="Download file backup (.json) dari komputer ini untuk dipindahkan ke Vercel"
-          >
-            <Upload className="w-4 h-4 text-indigo-200" /> 📦 Backup Data
-          </button>
 
-          <button
-            onClick={() => jsonInputRef.current?.click()}
-            className="px-3.5 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
-            title="Unggah file backup (.json) untuk memulihkan seluruh data di Vercel"
-          >
-            <Upload className="w-4 h-4 text-purple-200" /> 📥 Restore Data Vercel
-          </button>
-
-          <input
-            type="file"
-            ref={jsonInputRef}
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = (evt) => {
-                const content = evt.target?.result as string;
-                if (content) {
-                  importFullBackup(content);
-                }
-              };
-              reader.readAsText(file);
-              e.target.value = '';
-            }}
-          />
 
           <button
             onClick={handleExportCsv}
