@@ -788,6 +788,13 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       if (Array.isArray(data.parts) && data.parts.length > 0) {
         setParts(data.parts);
         localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(data.parts));
+        
+        // Auto push all parts to Supabase Cloud DB
+        const dbPayload = data.parts.map(mapSparePartToDb);
+        supabase.from('products').upsert(dbPayload).then(({ error }) => {
+          if (error) console.warn('Supabase import sync error:', error.message);
+          else console.log('✅ All imported parts pushed to Supabase Cloud!');
+        });
       }
       if (Array.isArray(data.transactions)) {
         setTransactions(data.transactions);
@@ -797,7 +804,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         setReturns(data.returns);
         localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(data.returns));
       }
-      showToast('✅ Berhasil memulihkan seluruh data sistem ke Vercel!', 'success');
+      showToast('✅ Berhasil memulihkan seluruh data sistem ke Vercel & Supabase Cloud!', 'success');
       return true;
     } catch (e) {
       showToast('❌ Format file backup .json tidak valid!', 'error');
