@@ -50,6 +50,8 @@ interface InventoryContextType {
   logActivity: (action: ActivityAction, detail: string, opts?: { targetId?: string; targetLabel?: string; sebelum?: string; sesudah?: string; modul?: string }) => void;
   getLowStockParts: () => SparePart[];
   getOverstockParts: () => SparePart[];
+  exportFullBackup: () => void;
+  importFullBackup: (jsonStr: string) => boolean;
   syncLocalToSupabase?: () => Promise<void>;
 }
 
@@ -756,6 +758,53 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(`🔧 Perbaikan (Refurbished) ${targetReturn.kodeItem} berhasil dicatat!`, 'success');
   };
 
+  // Backup & Restore Full Database JSON
+  const exportFullBackup = () => {
+    const backupData = {
+      parts,
+      transactions,
+      returns,
+      activityLogs,
+      discrepancyLogs,
+      locationMutations,
+      exportedAt: new Date().toISOString(),
+      appVersion: '5.0'
+    };
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Backup_Data_DoaIbu_${new Date().toISOString().substring(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('📦 File Backup Data (.json) berhasil diunduh!', 'success');
+  };
+
+  const importFullBackup = (jsonStr: string): boolean => {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (Array.isArray(data.parts) && data.parts.length > 0) {
+        setParts(data.parts);
+        localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(data.parts));
+      }
+      if (Array.isArray(data.transactions)) {
+        setTransactions(data.transactions);
+        localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(data.transactions));
+      }
+      if (Array.isArray(data.returns)) {
+        setReturns(data.returns);
+        localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(data.returns));
+      }
+      showToast('✅ Berhasil memulihkan seluruh data sistem ke Vercel!', 'success');
+      return true;
+    } catch (e) {
+      showToast('❌ Format file backup .json tidak valid!', 'error');
+      return false;
+    }
+  };
+
   return (
     <InventoryContext.Provider
       value={{
@@ -784,6 +833,8 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         logActivity,
         getLowStockParts,
         getOverstockParts,
+        exportFullBackup,
+        importFullBackup,
         syncLocalToSupabase,
       }}
     >
