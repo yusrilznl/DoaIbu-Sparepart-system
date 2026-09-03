@@ -687,8 +687,8 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
     logActivity(
       'RETUR_BARANG',
-      `[RETURN] ${auth?.currentUser?.name || 'User'} mencatat Retur Online #${noRetur} (${data.salesChannel} - Resi: ${data.noResiRetur}) untuk ${data.kodeItem} (${data.qty} ${data.satuan}) - Kondisi: ${data.kondisiBarang === 'GOOD_CONDITION' ? 'Good Condition (Restocked)' : 'Cacat/Rusak (Afkir)'}`,
-      { targetId: data.partId, targetLabel: data.kodeItem, modul: 'return' }
+      `[RETURN] ${auth?.currentUser?.name || 'User'} mencatat Retur Online #${noRetur} (${data.salesChannel} - Resi: ${data.noResiRetur}) untuk Part Number ${data.partNumber} (${data.qty} ${data.satuan}) - Kondisi: ${data.kondisiBarang === 'GOOD_CONDITION' ? 'Good Condition (Restocked)' : 'Cacat/Rusak (Afkir)'}`,
+      { targetId: data.partId, targetLabel: data.partNumber, modul: 'return' }
     );
 
     showToast(`✅ Retur Online #${noRetur} berhasil dicatat! ${data.kondisiBarang === 'GOOD_CONDITION' ? `(+${data.qty} Stok Restock)` : '(Masuk Karantina)'}`, 'success');
@@ -751,11 +751,11 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
     logActivity(
       'REFURBISH_ITEM',
-      `[RETURN] ${auth?.currentUser?.name || 'User'} melakukan Refurbish/Perbaikan barang retur ${targetReturn.kodeItem} (${targetReturn.noRetur}) - Biaya Ops: Rp ${refurbishData.biayaRefurbish.toLocaleString('id-ID')} — ${refurbishData.catatanRefurbish}`,
-      { targetId: targetReturn.partId, targetLabel: targetReturn.kodeItem, modul: 'return' }
+      `[RETURN] ${auth?.currentUser?.name || 'User'} melakukan Refurbish/Perbaikan barang retur Part Number ${targetReturn.partNumber} (${targetReturn.noRetur}) - Biaya Ops: Rp ${refurbishData.biayaRefurbish.toLocaleString('id-ID')} — ${refurbishData.catatanRefurbish}`,
+      { targetId: targetReturn.partId, targetLabel: targetReturn.partNumber, modul: 'return' }
     );
 
-    showToast(`🔧 Perbaikan (Refurbished) ${targetReturn.kodeItem} berhasil dicatat!`, 'success');
+    showToast(`🔧 Perbaikan (Refurbished) ${targetReturn.partNumber} berhasil dicatat!`, 'success');
   };
 
   // Backup & Restore Full Database JSON

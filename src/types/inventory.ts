@@ -167,8 +167,7 @@ export interface ReturnRecord {
   noRetur: string;
   tanggal: string;
   partId: string;
-  kodeItem: string;
-  namaSparepart: string;
+  partNumber: string;
   brand: string;
   lokasiRak: string;
   satuan: string;
@@ -177,13 +176,7 @@ export interface ReturnRecord {
   salesChannel: SalesChannel;
   noResiKirim: string;
   noResiRetur: string;
-  alasanRetur: string;
-  
-  biayaCheckout: number;
-  biayaRefund?: number;
-  biayaPackingLoss?: number;
-  biayaOngkirBbmLoss?: number;
-  totalKerugianOperasional?: number;
+  alamatRetur: string;
   
   kondisiBarang: ReturnCondition;
   statusLokasiBarang: string;

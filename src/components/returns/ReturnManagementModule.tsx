@@ -2,17 +2,14 @@ import React, { useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { ReturnRecord, ReturnCondition, SalesChannel, SparePart } from '../../types/inventory';
-import { isSuperAdminRole } from '../../types/auth';
 import { 
   RotateCcw, Search, Filter, Plus, CheckCircle2, AlertOctagon, 
-  Package, Wrench, Eye, Edit2, Check, X, Tag, FileSpreadsheet, MapPin
+  Wrench, Eye, Edit2, Check, X, FileSpreadsheet, MapPin, Building2
 } from 'lucide-react';
 
 export const ReturnManagementModule: React.FC = () => {
   const { parts, returns, addReturnRecord, updateReturnRecord, confirmReturnRecord, refurbishReturnItem, showToast } = useInventory();
-  const { currentUser, isFinancialPrivacyEnabled } = useAuth();
-  const isSuperAdmin = isSuperAdminRole(currentUser?.role);
-  const shouldSensorHpp = !isSuperAdmin || isFinancialPrivacyEnabled;
+  const { currentUser } = useAuth();
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,8 +30,7 @@ export const ReturnManagementModule: React.FC = () => {
   const [salesChannel, setSalesChannel] = useState<SalesChannel>('SHOPEE');
   const [noResiKirim, setNoResiKirim] = useState('');
   const [noResiRetur, setNoResiRetur] = useState('');
-  const [alasanRetur, setAlasanRetur] = useState('Pembeli Salah Order Tipe / Ukuran');
-  const [biayaCheckout, setBiayaCheckout] = useState<number | ''>('');
+  const [alamatRetur, setAlasanRetur] = useState('');
   const [kondisiBarang, setKondisiBarang] = useState<ReturnCondition>('GOOD_CONDITION');
   const [qty, setQty] = useState<number>(1);
   const [catatan, setCatatan] = useState('');
@@ -43,12 +39,6 @@ export const ReturnManagementModule: React.FC = () => {
   const [biayaRefurbish, setBiayaRefurbish] = useState<number | ''>('');
   const [hargaJualRefurbished, setHargaJualRefurbished] = useState<number | ''>('');
   const [catatanRefurbish, setCatatanRefurbish] = useState('');
-
-  // Currency Formatter
-  const formatIdr = (val?: number) => {
-    if (!val) return 'Rp 0';
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-  };
 
   // Filtered Parts for Combobox
   const filteredPartsForForm = parts.filter(p =>
@@ -63,8 +53,8 @@ export const ReturnManagementModule: React.FC = () => {
       r.noRetur.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.noResiKirim.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.noResiRetur.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.kodeItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.namaSparepart.toLowerCase().includes(searchQuery.toLowerCase());
+      (r.partNumber && r.partNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (r.alamatRetur && r.alamatRetur.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesChannel = selectedChannel === 'ALL' || r.salesChannel === selectedChannel;
     const matchesCondition = selectedCondition === 'ALL' || r.kondisiBarang === selectedCondition;
@@ -78,8 +68,7 @@ export const ReturnManagementModule: React.FC = () => {
     setPartSearch('');
     setNoResiKirim('');
     setNoResiRetur('');
-    setAlasanRetur('Pembeli Salah Order Tipe / Ukuran');
-    setBiayaCheckout('');
+    setAlasanRetur('');
     setKondisiBarang('GOOD_CONDITION');
     setQty(1);
     setCatatan('');
@@ -90,7 +79,7 @@ export const ReturnManagementModule: React.FC = () => {
   const handleSubmitNewReturn = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPart) {
-      showToast('Silakan pilih sparepart terlebih dahulu!', 'error');
+      showToast('Silakan pilih Part Number terlebih dahulu!', 'error');
       return;
     }
     if (!noResiKirim.trim() || !noResiRetur.trim()) {
@@ -104,8 +93,7 @@ export const ReturnManagementModule: React.FC = () => {
 
     addReturnRecord({
       partId: selectedPart.id,
-      kodeItem: selectedPart.kodeItem,
-      namaSparepart: selectedPart.namaSparepart,
+      partNumber: selectedPart.kodeItem,
       brand: selectedPart.brand,
       lokasiRak: selectedPart.lokasiRak,
       satuan: selectedPart.satuan || 'PCS',
@@ -113,8 +101,7 @@ export const ReturnManagementModule: React.FC = () => {
       salesChannel,
       noResiKirim: noResiKirim.trim(),
       noResiRetur: noResiRetur.trim(),
-      alasanRetur,
-      biayaCheckout: Number(biayaCheckout) || 0,
+      alamatRetur: alamatRetur.trim() || '-',
       kondisiBarang,
       statusLokasiBarang,
       catatan
@@ -135,8 +122,7 @@ export const ReturnManagementModule: React.FC = () => {
     updateReturnRecord(editRecord.id, {
       noResiKirim: editRecord.noResiKirim,
       noResiRetur: editRecord.noResiRetur,
-      alasanRetur: editRecord.alasanRetur,
-      biayaCheckout: Number(editRecord.biayaCheckout) || 0,
+      alamatRetur: editRecord.alamatRetur,
       kondisiBarang: editRecord.kondisiBarang,
       statusLokasiBarang,
       catatan: editRecord.catatan
@@ -172,8 +158,8 @@ export const ReturnManagementModule: React.FC = () => {
 
     const headers = [
       'No Return', 'Tanggal', 'Marketplace', 'Resi Kirim', 'Resi Return',
-      'Kode Item', 'Nama Sparepart', 'Qty', 'Alasan Return', 'Kondisi Barang',
-      'Uang Masuk Checkout', 'Status Lokasi Barang', 'Status Konfirmasi', 'Petugas'
+      'Part Number', 'Qty', 'Alamat Return', 'Kondisi Barang',
+      'Status Lokasi Barang', 'Status Konfirmasi', 'Petugas'
     ];
 
     const rows = returns.map(r => [
@@ -182,12 +168,10 @@ export const ReturnManagementModule: React.FC = () => {
       `"${r.salesChannel}"`,
       `"${r.noResiKirim}"`,
       `"${r.noResiRetur}"`,
-      `"${r.kodeItem}"`,
-      `"${r.namaSparepart.replace(/"/g, '""')}"`,
+      `"${r.partNumber}"`,
       r.qty,
-      `"${r.alasanRetur}"`,
+      `"${(r.alamatRetur || '').replace(/"/g, '""')}"`,
       `"${r.kondisiBarang}"`,
-      r.biayaCheckout,
       `"${r.statusLokasiBarang}"`,
       `"${r.status}"`,
       `"${r.petugas}"`
@@ -214,7 +198,7 @@ export const ReturnManagementModule: React.FC = () => {
               <RotateCcw className="w-6 h-6 text-[#0B3C85]" /> Return Barang (Penjualan Online)
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Kelola pencatatan retur, resi pengembalian, status kondisi fisik, dan lokasi penyimpanan barang
+              Pencatatan retur marketplace: No. Resi, Part Number, Alamat Retur, dan lokasi penyimpanan barang
             </p>
           </div>
 
@@ -232,7 +216,7 @@ export const ReturnManagementModule: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="Cari No. Resi / Part Number / Nama Sparepart..."
+              placeholder="Cari No. Resi / Part Number / Alamat Retur..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-black focus:border-[#0B3C85] focus:outline-none"
@@ -272,7 +256,7 @@ export const ReturnManagementModule: React.FC = () => {
       {/* 2. Di Atas Tabel: Tombol Input Return Baru */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="font-extrabold text-sm text-slate-900">Daftar Transaction Return</span>
+          <span className="font-extrabold text-sm text-slate-900">Daftar Transaksi Return</span>
           <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-800 font-mono font-bold text-xs">
             {filteredReturns.length} Item
           </span>
@@ -289,25 +273,24 @@ export const ReturnManagementModule: React.FC = () => {
       {/* 3. Tabel Daftar Return */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+          <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-slate-900 text-white uppercase tracking-wider font-extrabold whitespace-nowrap">
                 <th className="py-3.5 px-4 min-w-[130px]">Tanggal Return</th>
                 <th className="py-3.5 px-4 min-w-[180px]">No Resi (Kirim & Return)</th>
                 <th className="py-3.5 px-4 min-w-[120px]">Marketplace</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Part Number & Nama</th>
+                <th className="py-3.5 px-4 min-w-[150px]">Part Number</th>
                 <th className="py-3.5 px-4 text-center min-w-[70px]">Qty</th>
-                <th className="py-3.5 px-4 min-w-[160px]">Alasan Return</th>
-                <th className="py-3.5 px-4 text-center min-w-[150px]">Kondisi Barang</th>
-                <th className="py-3.5 px-4 text-right min-w-[140px]">Uang Masuk (Checkout)</th>
+                <th className="py-3.5 px-4 min-w-[180px]">Alamat yang Return</th>
+                <th className="py-3.5 px-4 text-center min-w-[140px]">Kondisi Barang</th>
                 <th className="py-3.5 px-4 min-w-[160px]">Status Lokasi Barang</th>
-                <th className="py-3.5 px-4 text-center min-w-[170px]">Aksi</th>
+                <th className="py-3.5 px-4 text-center min-w-[160px]">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
               {filteredReturns.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 font-semibold whitespace-nowrap">
+                  <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold whitespace-nowrap">
                     Belum ada data return yang dicatat. Klik "+ Input Return Baru" untuk menambah data.
                   </td>
                 </tr>
@@ -340,10 +323,9 @@ export const ReturnManagementModule: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* Part Number & Nama */}
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono font-black text-black block">{r.kodeItem}</span>
-                        <span className="font-bold text-slate-800 text-xs block truncate max-w-xs">{r.namaSparepart}</span>
+                      {/* Part Number */}
+                      <td className="py-3.5 px-4 font-mono font-black text-black text-sm whitespace-nowrap">
+                        {r.partNumber}
                       </td>
 
                       {/* Quantity */}
@@ -351,9 +333,9 @@ export const ReturnManagementModule: React.FC = () => {
                         {r.qty} {r.satuan}
                       </td>
 
-                      {/* Alasan Return */}
+                      {/* Alamat yang Return */}
                       <td className="py-3.5 px-4 text-slate-700 font-semibold text-xs max-w-xs">
-                        {r.alasanRetur || '-'}
+                        {r.alamatRetur || '-'}
                       </td>
 
                       {/* Kondisi Barang */}
@@ -367,11 +349,6 @@ export const ReturnManagementModule: React.FC = () => {
                             <AlertOctagon className="w-3.5 h-3.5 text-red-600" /> Cacat / Rusak
                           </span>
                         )}
-                      </td>
-
-                      {/* Uang Masuk Pada Saat Checkout */}
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                        {shouldSensorHpp ? 'Rp •••••••' : formatIdr(r.biayaCheckout)}
                       </td>
 
                       {/* Status Lokasi Barang */}
@@ -418,7 +395,7 @@ export const ReturnManagementModule: React.FC = () => {
                                 } else {
                                   setRefurbishRecord(r);
                                   setBiayaRefurbish('');
-                                  setHargaJualRefurbished(r.biayaCheckout || '');
+                                  setHargaJualRefurbished('');
                                   setCatatanRefurbish('');
                                 }
                               }}
@@ -500,14 +477,14 @@ export const ReturnManagementModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Sparepart Combobox */}
+              {/* Part Number Combobox */}
               <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Part Number / Sparepart *</label>
+                <label className="text-slate-700 font-extrabold block mb-1">Part Number *</label>
                 {selectedPart ? (
                   <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-300 rounded-xl">
                     <div>
-                      <span className="font-extrabold text-slate-900 block">{selectedPart.namaSparepart}</span>
-                      <span className="text-[10px] font-mono text-blue-700">{selectedPart.kodeItem} — Rak {selectedPart.lokasiRak}</span>
+                      <span className="font-mono font-black text-slate-900 text-sm block">{selectedPart.kodeItem}</span>
+                      <span className="text-[10px] text-slate-500 block">{selectedPart.namaSparepart} — Rak {selectedPart.lokasiRak}</span>
                     </div>
                     <button
                       type="button"
@@ -521,11 +498,11 @@ export const ReturnManagementModule: React.FC = () => {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Ketik kode item atau nama sparepart..."
+                      placeholder="Ketik Part Number atau nama sparepart..."
                       value={partSearch}
                       onChange={e => { setPartSearch(e.target.value); setIsPartDropdownOpen(true); }}
                       onFocus={() => setIsPartDropdownOpen(true)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-black focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-black focus:outline-none"
                     />
 
                     {isPartDropdownOpen && (
@@ -536,15 +513,14 @@ export const ReturnManagementModule: React.FC = () => {
                             onClick={() => {
                               setSelectedPart(p);
                               setIsPartDropdownOpen(false);
-                              setBiayaCheckout(p.hargaShopee || p.hargaJual || 0);
                             }}
                             className="p-2.5 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition"
                           >
                             <div>
-                              <span className="font-extrabold text-slate-900 block">{p.namaSparepart}</span>
-                              <span className="text-[10px] font-mono text-slate-500">{p.kodeItem} (Rak {p.lokasiRak})</span>
+                              <span className="font-mono font-black text-slate-900 block">{p.kodeItem}</span>
+                              <span className="text-[10px] text-slate-500">{p.namaSparepart} (Rak {p.lokasiRak})</span>
                             </div>
-                            <span className="font-mono text-xs font-bold text-slate-700">{formatIdr(p.hargaShopee || p.hargaJual || 0)}</span>
+                            <span className="font-mono text-xs font-bold text-slate-700">{p.stokRealtime} {p.satuan}</span>
                           </div>
                         ))}
                       </div>
@@ -553,46 +529,30 @@ export const ReturnManagementModule: React.FC = () => {
                 )}
               </div>
 
-              {/* Qty & Biaya Checkout */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-700 font-extrabold block mb-1">Quantity (Qty)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    value={qty}
-                    onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-extrabold block mb-1">Uang Masuk Saat Checkout (Rp)</label>
-                  <input
-                    type="number"
-                    placeholder="Contoh: 150000"
-                    value={biayaCheckout}
-                    onChange={e => setBiayaCheckout(e.target.value ? parseFloat(e.target.value) : '')}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
-                  />
-                </div>
+              {/* Quantity (Qty) */}
+              <div>
+                <label className="text-slate-700 font-extrabold block mb-1">Quantity (Qty) *</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={qty}
+                  onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
+                />
               </div>
 
-              {/* Alasan Return */}
+              {/* Alamat yang Return */}
               <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Alasan Return *</label>
-                <select
-                  value={alasanRetur}
+                <label className="text-slate-700 font-extrabold block mb-1">Alamat yang Return (Pengirim) *</label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Contoh: Jl. Magelang No. 45, RT 02/05, Semarang Jawa Tengah..."
+                  value={alamatRetur}
                   onChange={e => setAlasanRetur(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none"
-                >
-                  <option value="Pembeli Salah Order Tipe / Ukuran">Pembeli Salah Order Tipe / Ukuran</option>
-                  <option value="Gagal Kirim / RTS (COD Ditolak)">Gagal Kirim / RTS (COD Ditolak / Alamat Tidak Ditemukan)</option>
-                  <option value="Barang Cacat Pabrik / Defect">Barang Cacat Pabrik / Defect</option>
-                  <option value="Rusak Saat Pengiriman (Kurir)">Rusak Saat Pengiriman (Kurir)</option>
-                  <option value="Lainnya">Lainnya</option>
-                </select>
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-black focus:outline-none"
+                />
               </div>
 
               {/* Kondisi Barang */}
@@ -654,8 +614,7 @@ export const ReturnManagementModule: React.FC = () => {
 
             <div className="space-y-2 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <span className="font-extrabold text-slate-900 block text-sm">{detailRecord.namaSparepart}</span>
-                <span className="font-mono text-blue-700 block">Part #: {detailRecord.kodeItem}</span>
+                <span className="font-mono font-black text-slate-900 block text-sm">Part #: {detailRecord.partNumber}</span>
                 <span className="text-slate-600 block">Marketplace: <strong>{detailRecord.salesChannel}</strong></span>
               </div>
 
@@ -672,9 +631,8 @@ export const ReturnManagementModule: React.FC = () => {
 
               <div className="p-3 bg-slate-50 rounded-xl space-y-1">
                 <span className="text-slate-500 block">Qty Return: <strong>{detailRecord.qty} {detailRecord.satuan}</strong></span>
-                <span className="text-slate-500 block">Alasan: <strong>{detailRecord.alasanRetur}</strong></span>
+                <span className="text-slate-500 block">Alamat yang Return: <strong>{detailRecord.alamatRetur}</strong></span>
                 <span className="text-slate-500 block">Kondisi Fisik: <strong className={detailRecord.kondisiBarang === 'GOOD_CONDITION' ? 'text-emerald-700' : 'text-red-700'}>{detailRecord.kondisiBarang}</strong></span>
-                <span className="text-slate-500 block">Uang Checkout: <strong>{formatIdr(detailRecord.biayaCheckout)}</strong></span>
                 <span className="text-slate-500 block">Lokasi Penyimpanan: <strong>{detailRecord.statusLokasiBarang}</strong></span>
                 <span className="text-slate-500 block">Petugas: <strong>{detailRecord.petugas}</strong></span>
               </div>
@@ -723,22 +681,12 @@ export const ReturnManagementModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Alasan Return</label>
-                <input
-                  type="text"
-                  value={editRecord.alasanRetur}
-                  onChange={e => setEditRecord({ ...editRecord, alasanRetur: e.target.value })}
+                <label className="text-slate-700 font-extrabold block mb-1">Alamat yang Return</label>
+                <textarea
+                  rows={2}
+                  value={editRecord.alamatRetur}
+                  onChange={e => setEditRecord({ ...editRecord, alamatRetur: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-black focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Uang Masuk Saat Checkout (Rp)</label>
-                <input
-                  type="number"
-                  value={editRecord.biayaCheckout}
-                  onChange={e => setEditRecord({ ...editRecord, biayaCheckout: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
                 />
               </div>
 
@@ -781,33 +729,11 @@ export const ReturnManagementModule: React.FC = () => {
             </div>
 
             <div className="p-3 bg-violet-50 border border-violet-200 rounded-2xl text-xs space-y-1">
-              <span className="font-extrabold text-violet-900 block">{refurbishRecord.namaSparepart}</span>
-              <span className="text-[11px] font-mono text-slate-600 block">Kode: {refurbishRecord.kodeItem} | Resi Return: {refurbishRecord.noResiRetur}</span>
+              <span className="font-mono font-black text-violet-900 text-sm block">Part #: {refurbishRecord.partNumber}</span>
+              <span className="text-[11px] font-mono text-slate-600 block">Resi Return: {refurbishRecord.noResiRetur} | Alamat: {refurbishRecord.alamatRetur}</span>
             </div>
 
             <form onSubmit={handleSaveRefurbish} className="space-y-3 text-xs font-semibold">
-              <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Biaya Perbaikan / Refurbish (Rp)</label>
-                <input
-                  type="number"
-                  placeholder="Contoh: 15000"
-                  value={biayaRefurbish}
-                  onChange={e => setBiayaRefurbish(e.target.value ? parseFloat(e.target.value) : '')}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Harga Jual Refurbished Baru (Rp)</label>
-                <input
-                  type="number"
-                  placeholder="Contoh: 130000"
-                  value={hargaJualRefurbished}
-                  onChange={e => setHargaJualRefurbished(e.target.value ? parseFloat(e.target.value) : '')}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-black focus:outline-none"
-                />
-              </div>
-
               <div>
                 <label className="text-slate-700 font-extrabold block mb-1">Catatan Perbaikan *</label>
                 <textarea
