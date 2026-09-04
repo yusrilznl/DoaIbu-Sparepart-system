@@ -3,7 +3,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { SparePart, TurnoverStatus } from '../../types/inventory';
 import { isSuperAdminRole } from '../../types/auth';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, Upload, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, Upload, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin, RefreshCw } from 'lucide-react';
 import { ItemModal } from './ItemModal';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
@@ -20,7 +20,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   onSelectForOutbound,
   onSelectForInbound
 }) => {
-  const { parts, addSparePart, updateSparePart, deleteSparePart, showToast, getGoodConditionReturnCount, exportFullBackup, importFullBackup } = useInventory();
+  const { parts, addSparePart, updateSparePart, deleteSparePart, showToast, getGoodConditionReturnCount, exportFullBackup, importFullBackup, cleanDuplicateParts } = useInventory();
   const { currentUser, isFinancialPrivacyEnabled } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -252,7 +252,13 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             <Camera className="w-4 h-4 text-emerald-400" /> Pindai Barcode Kamera
           </button>
 
-
+          <button
+            onClick={cleanDuplicateParts}
+            className="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition"
+            title="Bersihkan seluruh data duplikat di browser & database Supabase dengan 1-klik"
+          >
+            <RefreshCw className="w-4 h-4 text-amber-200" /> 🧹 Clean Duplikat
+          </button>
 
           <button
             onClick={handleExportCsv}

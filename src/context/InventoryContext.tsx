@@ -53,6 +53,7 @@ interface InventoryContextType {
   exportFullBackup: () => void;
   importFullBackup: (jsonStr: string) => boolean;
   syncLocalToSupabase?: () => Promise<void>;
+  cleanDuplicateParts: () => Promise<void>;
 }
 
 const LOCAL_STORAGE_KEY_PARTS = 'optipart_doaibu_parts_v5';
@@ -1083,6 +1084,39 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const cleanDuplicateParts = async () => {
+    const deduplicated = deduplicateParts(parts);
+    const removedCount = parts.length - deduplicated.length;
+    setParts(deduplicated);
+    localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicated));
+
+    try {
+      const { data } = await supabase.from('products').select('id, kode_item, part_number');
+      if (data && data.length > 0) {
+        const seenMap = new Map<string, any>();
+        const idsToDelete: any[] = [];
+        data.forEach((row: any) => {
+          const code = String(row.kode_item || row.part_number || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
+          if (!code) return;
+          if (seenMap.has(code)) {
+            idsToDelete.push(row.id);
+          } else {
+            seenMap.set(code, row);
+          }
+        });
+
+        if (idsToDelete.length > 0) {
+          await supabase.from('products').delete().in('id', idsToDelete);
+          console.log(`🧹 Deleted ${idsToDelete.length} duplicate rows from Supabase DB.`);
+        }
+      }
+    } catch (e) {
+      console.warn('Clean DB error:', e);
+    }
+
+    showToast(`🧹 Sukses! ${removedCount > 0 ? removedCount : 0} data duplikat berhasil dibersihkan!`, 'success');
+  };
+
   return (
     <InventoryContext.Provider
       value={{
@@ -1114,6 +1148,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         exportFullBackup,
         importFullBackup,
         syncLocalToSupabase,
+        cleanDuplicateParts,
       }}
     >
       {children}
