@@ -604,32 +604,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = emailInput.trim().toLowerCase();
     const otpCodeInput = inputOtp.trim();
 
-    // Master OTP Bypass '123456' for Testing / Demo
-    const isMasterOtp = otpCodeInput === '123456';
-
     // 1. Verify 6-digit token using Supabase Auth API
     let isSupabaseVerified = false;
-    if (!isMasterOtp) {
-      try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          email: cleanEmail,
-          token: otpCodeInput,
-          type: 'email',
-        });
-        if (!error && (data?.session || data?.user)) {
-          isSupabaseVerified = true;
-        }
-      } catch (err: any) {
-        console.warn('Supabase verifyOtp notice:', err);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: otpCodeInput,
+        type: 'email',
+      });
+      if (!error && (data?.session || data?.user)) {
+        isSupabaseVerified = true;
       }
+    } catch (err: any) {
+      console.warn('Supabase verifyOtp notice:', err);
     }
 
-    // 2. Check local active OTP desk entry fallback
+    // 2. Check local active OTP fallback (generated saat requestOtp)
     const activeOtpEntry = activeOtps.find(o => o.email === cleanEmail && !o.isUsed);
     const isLocalOtpValid = activeOtpEntry && activeOtpEntry.otpCode === otpCodeInput;
 
-    if (!isMasterOtp && !isSupabaseVerified && !isLocalOtpValid) {
-      const errorMsg = 'Kode OTP 6-digit yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email atau gunakan Kode Master 123456.';
+    if (!isSupabaseVerified && !isLocalOtpValid) {
+      const errorMsg = 'Kode OTP 6-digit yang Anda masukkan SALAH atau telah kadaluarsa! Silakan periksa inbox email Anda.';
       setLoginError(errorMsg);
       addSecurityLog(
         cleanEmail,
@@ -665,7 +660,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'SUCCESS',
       'Login Berhasil (OTP Valid)',
       false,
-      `Autentikasi verifikasi 6-digit OTP ${isMasterOtp ? '(Master Bypass 123456)' : ''} sukses sebagai ${matchedUser.roleTitle}`
+      `Autentikasi verifikasi 6-digit OTP berhasil sebagai ${matchedUser.roleTitle}`
     );
 
     return true;
