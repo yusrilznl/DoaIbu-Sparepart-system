@@ -197,21 +197,20 @@ const mapTransactionToDb = (t: Transaction) => ({
   created_date: t.createdDate
 });
 
-// 6. Helper: Deduplicate spareparts by kodeItem / partNumber
+// 6. Helper: Deduplicate spareparts by kodeItem / partNumber (ignoring spaces & case)
 const deduplicateParts = (partsList: SparePart[]): SparePart[] => {
   const map = new Map<string, SparePart>();
   partsList.forEach(p => {
     if (!p) return;
-    const code = (p.kodeItem || (p as any).partNumber || '').trim();
+    const code = (p.kodeItem || (p as any).partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
     if (!code) return;
-    const key = code.toLowerCase();
-    if (!map.has(key)) {
-      map.set(key, p);
+    if (!map.has(code)) {
+      map.set(code, p);
     } else {
-      const existing = map.get(key)!;
+      const existing = map.get(code)!;
       // Prefer the one with valid oemNumber or non-empty deskripsi
       if ((!existing.oemNumber || existing.oemNumber === '-') && p.oemNumber && p.oemNumber !== '-') {
-        map.set(key, p);
+        map.set(code, p);
       }
     }
   });
@@ -260,16 +259,16 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (data && data.length > 0) {
           console.log(`✅ Loaded ${data.length} products from Supabase Cloud DB!`);
 
-          // Detect & clean up duplicate rows in Supabase DB
+          // Detect & clean up duplicate rows in Supabase DB (supports string and numeric IDs)
           const seenDbCodesMap = new Map<string, any>();
-          const duplicateDbIdsToDelete: number[] = [];
+          const duplicateDbIdsToDelete: any[] = [];
 
           data.forEach((row: any) => {
-            const code = (row.kode_item || row.kodeItem || row.part_number || row.partNumber || '').trim().toLowerCase();
+            const code = (row.kode_item || row.kodeItem || row.part_number || row.partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
             if (!code) return;
             if (seenDbCodesMap.has(code)) {
-              if (row.id && !isNaN(Number(row.id))) {
-                duplicateDbIdsToDelete.push(Number(row.id));
+              if (row.id !== undefined && row.id !== null) {
+                duplicateDbIdsToDelete.push(row.id);
               }
             } else {
               seenDbCodesMap.set(code, row);

@@ -53,22 +53,36 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  const filteredParts = parts.filter(part => {
+  const rawFilteredParts = parts.filter(part => {
     if (!part) return false;
     const itemCode = part.kodeItem || (part as any).partNumber || '';
     if (!itemCode) return false;
 
-    const matchesSearch =
-      itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (part.namaSparepart || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (part.oemNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (part.lokasiRak || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const searchLower = searchQuery.trim().toLowerCase();
+
+    const matchesSearch = !searchLower ||
+      itemCode.toLowerCase().includes(searchLower) ||
+      (part.namaSparepart || '').toLowerCase().includes(searchLower) ||
+      (part.oemNumber || '').toLowerCase().includes(searchLower) ||
+      (part.lokasiRak || '').toLowerCase().includes(searchLower);
 
     const matchesBrand = selectedBrand === 'ALL' || part.brand === selectedBrand;
     const matchesRack = selectedRack === 'ALL' || part.lokasiRak === selectedRack;
 
     return matchesSearch && matchesBrand && matchesRack;
   });
+
+  // Defensive Deduplication Layer to prevent UI row repetition
+  const filteredParts = (() => {
+    const map = new Map<string, SparePart>();
+    rawFilteredParts.forEach(p => {
+      const code = (p.kodeItem || (p as any).partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
+      if (code && !map.has(code)) {
+        map.set(code, p);
+      }
+    });
+    return Array.from(map.values());
+  })();
 
   const handleDelete = (id: string, kode: string) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus sparepart "${kode}" dari database?`)) {
