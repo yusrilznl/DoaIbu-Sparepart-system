@@ -197,12 +197,43 @@ const mapTransactionToDb = (t: Transaction) => ({
   created_date: t.createdDate
 });
 
+// 6. Helper: Deduplicate spareparts by kodeItem / partNumber
+const deduplicateParts = (partsList: SparePart[]): SparePart[] => {
+  const map = new Map<string, SparePart>();
+  partsList.forEach(p => {
+    if (!p) return;
+    const code = (p.kodeItem || (p as any).partNumber || '').trim();
+    if (!code) return;
+    const key = code.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, p);
+    } else {
+      const existing = map.get(key)!;
+      // Prefer the one with valid oemNumber or non-empty deskripsi
+      if ((!existing.oemNumber || existing.oemNumber === '-') && p.oemNumber && p.oemNumber !== '-') {
+        map.set(key, p);
+      }
+    }
+  });
+  return Array.from(map.values());
+};
+
 const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const auth = useAuth();
 
   const [parts, setParts] = useState<SparePart[]>(() => {
     const localData = localStorage.getItem(LOCAL_STORAGE_KEY_PARTS);
-    return localData ? JSON.parse(localData) : INITIAL_SPAREPARTS;
+    if (localData) {
+      try {
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return deduplicateParts(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse parts from localStorage', e);
+      }
+    }
+    return deduplicateParts(INITIAL_SPAREPARTS);
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -215,7 +246,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            currentLocal = parsed;
+            currentLocal = deduplicateParts(parsed);
           }
         } catch (e) {
           console.error('Failed to parse parts from localStorage', e);
@@ -228,38 +259,37 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
           console.warn('⚠️ Supabase fetch products notice:', error.message);
         } else if (data && data.length > 0) {
           console.log(`✅ Loaded ${data.length} products from Supabase Cloud DB!`);
-          const mappedParts = data.map(mapDbToSparePart);
-          
-          if (currentLocal.length > 0) {
-            const merged = [...mappedParts];
-            let needsDbSync = false;
 
-            currentLocal.forEach(localItem => {
-              if (!localItem || !(localItem.kodeItem || (localItem as any).partNumber)) return;
-              const localCode = (localItem.kodeItem || (localItem as any).partNumber || '').toLowerCase();
-              const dbIndex = merged.findIndex(dbItem => (dbItem.kodeItem || '').toLowerCase() === localCode);
-              if (dbIndex === -1) {
-                merged.push(localItem);
-                needsDbSync = true;
+          // Detect & clean up duplicate rows in Supabase DB
+          const seenDbCodesMap = new Map<string, any>();
+          const duplicateDbIdsToDelete: number[] = [];
+
+          data.forEach((row: any) => {
+            const code = (row.kode_item || row.kodeItem || row.part_number || row.partNumber || '').trim().toLowerCase();
+            if (!code) return;
+            if (seenDbCodesMap.has(code)) {
+              if (row.id && !isNaN(Number(row.id))) {
+                duplicateDbIdsToDelete.push(Number(row.id));
               }
-            });
-
-            setParts(merged);
-            localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(merged));
-            setIsLoaded(true);
-
-            if (needsDbSync) {
-              const dbPayload = merged.map(mapSparePartToDb);
-              supabase.from('products').upsert(dbPayload).then(({ error: syncErr }) => {
-                if (syncErr) console.warn('Background Supabase auto-sync notice:', syncErr.message);
-                else console.log('✅ Auto-synced local parts & prices to Supabase Cloud DB!');
-              });
+            } else {
+              seenDbCodesMap.set(code, row);
             }
-            return;
+          });
+
+          if (duplicateDbIdsToDelete.length > 0) {
+            console.log(`🧹 Cleaning up ${duplicateDbIdsToDelete.length} duplicate sparepart rows from Supabase DB:`, duplicateDbIdsToDelete);
+            supabase.from('products').delete().in('id', duplicateDbIdsToDelete).then(({ error: delErr }) => {
+              if (delErr) console.warn('Clean duplicate DB rows notice:', delErr.message);
+              else console.log('✅ Successfully removed duplicate rows from Supabase Cloud DB!');
+            });
           }
 
-          setParts(mappedParts);
-          localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(mappedParts));
+          const uniqueDbRows = Array.from(seenDbCodesMap.values());
+          const mappedParts = uniqueDbRows.map(mapDbToSparePart);
+          const deduplicatedParts = deduplicateParts([...mappedParts, ...currentLocal]);
+
+          setParts(deduplicatedParts);
+          localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedParts));
           setIsLoaded(true);
           return;
         }
@@ -269,16 +299,18 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Fallback jika Supabase DB belum ada baris / belum sync
       if (currentLocal.length > 0) {
-        setParts(currentLocal);
-        // Otomatis sync & push seluruh data lokal ke Supabase Cloud DB secara silent
-        const dbPayload = currentLocal.map(mapSparePartToDb);
+        const deduplicatedLocal = deduplicateParts(currentLocal);
+        setParts(deduplicatedLocal);
+        localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedLocal));
+        const dbPayload = deduplicatedLocal.map(mapSparePartToDb);
         supabase.from('products').upsert(dbPayload).then(({ error }) => {
           if (error) console.warn('Background Supabase sync notice:', error.message);
           else console.log('✅ Local parts automatically pushed to Supabase Cloud DB!');
         });
       } else {
-        setParts(INITIAL_SPAREPARTS);
-        localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(INITIAL_SPAREPARTS));
+        const deduplicatedInitial = deduplicateParts(INITIAL_SPAREPARTS);
+        setParts(deduplicatedInitial);
+        localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedInitial));
       }
       setIsLoaded(true);
     };
@@ -500,11 +532,16 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   const saveSparePart = (partData: Omit<SparePart, 'id' | 'terakhirDiupdate'>, existingId?: string): SparePart => {
     const nowStr = new Date().toISOString().substring(0, 10) + ' ' + new Date().toTimeString().substring(0, 5);
 
-    if (existingId) {
-      const prevPart = parts.find(p => p.id === existingId);
-      const updatedPart = { ...partData, id: existingId, terakhirDiupdate: nowStr } as SparePart;
+    // Auto-detect existing item by kodeItem to prevent duplicate insertion
+    const targetCode = (partData.kodeItem || (partData as any).partNumber || '').trim().toLowerCase();
+    const existingByCode = !existingId ? parts.find(p => (p.kodeItem || '').trim().toLowerCase() === targetCode) : null;
+    const resolvedId = existingId || (existingByCode ? existingByCode.id : undefined);
 
-      const nextParts = parts.map(p => (p.id === existingId ? updatedPart : p));
+    if (resolvedId) {
+      const prevPart = parts.find(p => p.id === resolvedId);
+      const updatedPart = { ...prevPart, ...partData, id: resolvedId, terakhirDiupdate: nowStr } as SparePart;
+
+      const nextParts = deduplicateParts(parts.map(p => (p.id === resolvedId ? updatedPart : p)));
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
 
@@ -514,7 +551,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       const stokSesudah = partData.stokRealtime;
       logActivity('EDIT_ITEM',
         `${auth?.currentUser?.name || 'User'} memperbarui item ${partData.kodeItem}${stokSebelum !== stokSesudah ? ` — Stok: ${stokSebelum} → ${stokSesudah}` : ''}`,
-        { targetId: existingId, targetLabel: partData.kodeItem, sebelum: JSON.stringify({ stok: stokSebelum }), sesudah: JSON.stringify({ stok: stokSesudah }), modul: 'catalog' }
+        { targetId: resolvedId, targetLabel: partData.kodeItem, sebelum: JSON.stringify({ stok: stokSebelum }), sesudah: JSON.stringify({ stok: stokSesudah }), modul: 'catalog' }
       );
 
       const dbPayload = mapSparePartToDb(updatedPart);
@@ -539,7 +576,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       const numericId = Date.now();
       const newPart = { ...partData, id: String(numericId), terakhirDiupdate: nowStr } as SparePart;
 
-      const nextParts = [newPart, ...parts];
+      const nextParts = deduplicateParts([newPart, ...parts]);
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
 
