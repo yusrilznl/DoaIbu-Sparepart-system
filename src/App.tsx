@@ -116,7 +116,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-slate-100 text-slate-900 font-sans flex flex-col relative">
+    <div className="min-h-screen w-full max-w-full bg-slate-100 text-slate-900 font-sans flex flex-col relative pt-14">
       <Navbar
         onToggleSidebar={() => setIsSidebarOpenMobile(prev => !prev)}
         onSearchGlobal={(query) => { if (query) handleNavigate('catalog'); }}

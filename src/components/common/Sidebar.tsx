@@ -195,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Permanent Sidebar */}
-      <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 shrink-0 hidden lg:block shadow-2xs sticky top-[57px] self-start h-[calc(100vh-57px)] overflow-y-auto transition-all duration-300 z-30">
+      <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 shrink-0 hidden lg:block shadow-2xs sticky top-14 self-start h-[calc(100vh-3.5rem)] overflow-y-auto transition-all duration-300 z-30">
         {renderContent}
       </aside>
 

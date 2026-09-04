@@ -71,8 +71,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onSearchGlobal,
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'User')}&background=0B3C85&color=ffffff&bold=true&size=128`;
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-white/95 border-b border-slate-200 shadow-sm w-full shrink-0">
-      <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 w-full max-w-full">
+    <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-md bg-white/95 border-b border-slate-200 shadow-sm w-full h-14">
+      <div className="px-3 sm:px-4 h-full flex items-center justify-between gap-2 w-full max-w-full">
         {/* Left Side: Hamburger + Logo */}
         <div className="flex items-center gap-2 shrink-0">
           {onToggleSidebar && (
