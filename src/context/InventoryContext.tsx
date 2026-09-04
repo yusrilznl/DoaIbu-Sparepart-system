@@ -281,7 +281,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Fallback jika Supabase DB belum ada baris / belum sync
       if (currentLocal.length > 0) {
-        const deduplicatedLocal = deduplicateParts(currentLocal);
+        const deduplicatedLocal = deduplicatePartsList(currentLocal);
         setParts(deduplicatedLocal);
         localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedLocal));
         const dbPayload = deduplicatedLocal.map(mapSparePartToDb);
@@ -290,7 +290,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
           else console.log('✅ Local parts automatically pushed to Supabase Cloud DB!');
         });
       } else {
-        const deduplicatedInitial = deduplicateParts(INITIAL_SPAREPARTS);
+        const deduplicatedInitial = deduplicatePartsList(INITIAL_SPAREPARTS);
         setParts(deduplicatedInitial);
         localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedInitial));
       }
@@ -523,7 +523,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       const prevPart = parts.find(p => p.id === resolvedId);
       const updatedPart = { ...prevPart, ...partData, id: resolvedId, terakhirDiupdate: nowStr } as SparePart;
 
-      const nextParts = deduplicateParts(parts.map(p => (p.id === resolvedId ? updatedPart : p)));
+      const nextParts = deduplicatePartsList(parts.map(p => (p.id === resolvedId ? updatedPart : p)));
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
 
@@ -561,7 +561,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       const numericId = Date.now();
       const newPart = { ...partData, id: String(numericId), terakhirDiupdate: nowStr } as SparePart;
 
-      const nextParts = deduplicateParts([newPart, ...parts]);
+      const nextParts = deduplicatePartsList([newPart, ...parts]);
       setParts(nextParts);
       localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(nextParts));
 

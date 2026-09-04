@@ -95,7 +95,7 @@ export const DraggableCameraFab: React.FC<DraggableCameraFabProps> = ({ onClick 
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onMouseDown={handleMouseDown}
-      className="z-50 select-none cursor-grab active:cursor-grabbing"
+      className="z-40 select-none cursor-grab active:cursor-grabbing"
     >
       <button
         type="button"

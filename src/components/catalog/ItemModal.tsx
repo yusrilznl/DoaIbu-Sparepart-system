@@ -142,7 +142,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
       <div className="bg-white border border-slate-200 rounded-2xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl space-y-5 mx-auto animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div>

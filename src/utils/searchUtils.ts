@@ -23,7 +23,10 @@ export const deduplicatePartsList = (parts: SparePart[]): SparePart[] => {
   parts.forEach(p => {
     if (!p) return;
     const rawCode = p.kodeItem || (p as any).partNumber || '';
-    const normKey = normalizePartCode(rawCode);
+    let normKey = normalizePartCode(rawCode);
+    if (!normKey && p.namaSparepart) {
+      normKey = p.namaSparepart.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    }
     if (!normKey) return;
 
     // Clean primary kodeItem if it contains '|'
