@@ -281,7 +281,7 @@ export const ReturnManagementModule: React.FC = () => {
                 <th className="py-3.5 px-4 min-w-[120px]">Marketplace</th>
                 <th className="py-3.5 px-4 min-w-[150px]">Part Number</th>
                 <th className="py-3.5 px-4 text-center min-w-[70px]">Qty</th>
-                <th className="py-3.5 px-4 min-w-[180px]">Alamat yang Return</th>
+                <th className="py-3.5 px-4 min-w-[180px]">Alamat Return</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Kondisi Barang</th>
                 <th className="py-3.5 px-4 min-w-[160px]">Status Lokasi Barang</th>
                 <th className="py-3.5 px-4 text-center min-w-[160px]">Aksi</th>
@@ -333,7 +333,7 @@ export const ReturnManagementModule: React.FC = () => {
                         {r.qty} {r.satuan}
                       </td>
 
-                      {/* Alamat yang Return */}
+                      {/* Alamat Return */}
                       <td className="py-3.5 px-4 text-slate-700 font-semibold text-xs max-w-xs">
                         {r.alamatRetur || '-'}
                       </td>
@@ -542,9 +542,9 @@ export const ReturnManagementModule: React.FC = () => {
                 />
               </div>
 
-              {/* Alamat yang Return */}
+              {/* Alamat Return */}
               <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Alamat yang Return (Pengirim) *</label>
+                <label className="text-slate-700 font-extrabold block mb-1">Alamat Return (Pengirim) *</label>
                 <textarea
                   rows={2}
                   required
@@ -631,7 +631,7 @@ export const ReturnManagementModule: React.FC = () => {
 
               <div className="p-3 bg-slate-50 rounded-xl space-y-1">
                 <span className="text-slate-500 block">Qty Return: <strong>{detailRecord.qty} {detailRecord.satuan}</strong></span>
-                <span className="text-slate-500 block">Alamat yang Return: <strong>{detailRecord.alamatRetur}</strong></span>
+                <span className="text-slate-500 block">Alamat Return: <strong>{detailRecord.alamatRetur}</strong></span>
                 <span className="text-slate-500 block">Kondisi Fisik: <strong className={detailRecord.kondisiBarang === 'GOOD_CONDITION' ? 'text-emerald-700' : 'text-red-700'}>{detailRecord.kondisiBarang}</strong></span>
                 <span className="text-slate-500 block">Lokasi Penyimpanan: <strong>{detailRecord.statusLokasiBarang}</strong></span>
                 <span className="text-slate-500 block">Petugas: <strong>{detailRecord.petugas}</strong></span>
@@ -681,7 +681,7 @@ export const ReturnManagementModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-700 font-extrabold block mb-1">Alamat yang Return</label>
+                <label className="text-slate-700 font-extrabold block mb-1">Alamat Return</label>
                 <textarea
                   rows={2}
                   value={editRecord.alamatRetur}

@@ -122,6 +122,81 @@ const mapSparePartToDb = (part: any) => {
   return dbPayload;
 };
 
+// 3. Mapping DB -> ReturnRecord
+const mapDbToReturnRecord = (row: any): ReturnRecord => ({
+  id: String(row.id),
+  noRetur: row.no_retur || row.noRetur || '',
+  tanggal: row.tanggal || row.created_at || '',
+  partId: row.part_id || row.partId || '',
+  partNumber: row.part_number || row.partNumber || row.kode_item || '',
+  brand: row.brand || 'GENUINE',
+  lokasiRak: row.lokasi_rak || row.lokasiRak || '-',
+  satuan: row.satuan || 'PCS',
+  qty: Number(row.qty ?? 1),
+  salesChannel: row.sales_channel || row.salesChannel || 'SHOPEE',
+  noResiKirim: row.no_resi_kirim || row.noResiKirim || '',
+  noResiRetur: row.no_resi_retur || row.noResiRetur || '',
+  alamatRetur: row.alamat_retur || row.alamatRetur || row.alasan_retur || '',
+  kondisiBarang: row.kondisi_barang || row.kondisiBarang || 'GOOD_CONDITION',
+  statusLokasiBarang: row.status_lokasi_barang || row.statusLokasiBarang || 'Gudang Utama Magelang',
+  status: row.status || 'PENDING',
+  isRefurbished: Boolean(row.is_refurbished ?? row.isRefurbished ?? false),
+  biayaRefurbish: Number(row.biaya_refurbish ?? row.biayaRefurbish ?? 0),
+  hargaJualRefurbished: Number(row.harga_jual_refurbished ?? row.hargaJualRefurbished ?? 0),
+  catatanRefurbish: row.catatan_refurbish || row.catatanRefurbish || '',
+  tanggalRefurbish: row.tanggal_refurbish || row.tanggalRefurbish || '',
+  petugas: row.petugas || 'Admin',
+  catatan: row.catatan || '',
+  fotoBukti: row.foto_bukti || row.fotoBukti || ''
+});
+
+// 4. Mapping ReturnRecord -> DB
+const mapReturnRecordToDb = (r: ReturnRecord) => ({
+  id: r.id,
+  no_retur: r.noRetur,
+  tanggal: r.tanggal,
+  part_id: r.partId,
+  part_number: r.partNumber,
+  brand: r.brand,
+  lokasi_rak: r.lokasiRak,
+  satuan: r.satuan,
+  qty: r.qty,
+  sales_channel: r.salesChannel,
+  no_resi_kirim: r.noResiKirim,
+  no_resi_retur: r.noResiRetur,
+  alamat_retur: r.alamatRetur,
+  kondisi_barang: r.kondisiBarang,
+  status_lokasi_barang: r.statusLokasiBarang,
+  status: r.status,
+  is_refurbished: r.isRefurbished,
+  biaya_refurbish: r.biayaRefurbish,
+  harga_jual_refurbished: r.hargaJualRefurbished,
+  catatan_refurbish: r.catatanRefurbish,
+  tanggal_refurbish: r.tanggalRefurbish,
+  petugas: r.petugas,
+  catatan: r.catatan,
+  foto_bukti: r.fotoBukti
+});
+
+// 5. Mapping Transaction -> DB
+const mapTransactionToDb = (t: Transaction) => ({
+  id: t.id,
+  no_transaksi: t.noTransaksi,
+  tanggal: t.tanggal,
+  jenis_transaksi: t.jenisTransaksi,
+  sales_channel: t.salesChannel,
+  gudang_asal: t.gudangAsal,
+  pelanggan: t.pelanggan,
+  sales_person: t.salesPerson,
+  items: JSON.stringify(t.items || []),
+  total_kuantitas_item: t.totalKuantitasItem,
+  total_jumlah_terima: t.totalJumlahTerima,
+  total_nilai_hpp: t.totalNilaiHpp,
+  total_nilai_jual: t.totalNilaiJual,
+  notes: t.notes,
+  created_date: t.createdDate
+});
+
 const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const auth = useAuth();
 
@@ -221,9 +296,20 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     return INITIAL_TRANSACTIONS;
   });
 
-  // Fetch Transactions from Supabase DB on Mount
+  // Fetch & 2-Way Sync Transactions from Supabase DB on Mount
   useEffect(() => {
     const loadTransactions = async () => {
+      let currentLocal: Transaction[] = [];
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TX);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) currentLocal = parsed;
+        } catch (e) {
+          console.error('Failed to parse local transactions', e);
+        }
+      }
+
       try {
         const { data, error } = await supabase.from('transactions').select('*');
         if (!error && data) {
@@ -244,11 +330,43 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
             notes: t.notes || '',
             createdDate: t.created_date || t.createdDate || t.tanggal || ''
           }));
+
+          if (currentLocal.length > 0) {
+            const merged = [...mappedTx];
+            let needsSync = false;
+            currentLocal.forEach(localItem => {
+              if (!localItem || !localItem.id) return;
+              const exists = merged.some(m => String(m.id) === String(localItem.id) || m.noTransaksi === localItem.noTransaksi);
+              if (!exists) {
+                merged.push(localItem);
+                needsSync = true;
+              }
+            });
+            setTransactions(merged);
+            localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(merged));
+            if (needsSync) {
+              const dbPayload = merged.map(mapTransactionToDb);
+              supabase.from('transactions').upsert(dbPayload).then(({ error: err }) => {
+                if (err) console.warn('Supabase transactions sync notice:', err.message);
+              });
+            }
+            return;
+          }
+
           setTransactions(mappedTx);
           localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(mappedTx));
+          return;
         }
       } catch (e) {
         console.error('Failed to load transactions from Supabase:', e);
+      }
+
+      if (currentLocal.length > 0) {
+        setTransactions(currentLocal);
+        const dbPayload = currentLocal.map(mapTransactionToDb);
+        supabase.from('transactions').upsert(dbPayload).then(({ error: err }) => {
+          if (err) console.warn('Supabase transactions push notice:', err.message);
+        });
       }
     };
 
@@ -259,6 +377,67 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_RETURNS);
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Fetch & 2-Way Sync Returns from Supabase DB on Mount
+  useEffect(() => {
+    const loadReturns = async () => {
+      let currentLocal: ReturnRecord[] = [];
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_RETURNS);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) currentLocal = parsed;
+        } catch (e) {
+          console.error('Failed to parse local returns', e);
+        }
+      }
+
+      try {
+        const { data, error } = await supabase.from('returns').select('*');
+        if (!error && data && data.length > 0) {
+          const mappedReturns = data.map(mapDbToReturnRecord);
+
+          if (currentLocal.length > 0) {
+            const merged = [...mappedReturns];
+            let needsSync = false;
+            currentLocal.forEach(localItem => {
+              if (!localItem || !localItem.id) return;
+              const exists = merged.some(m => String(m.id) === String(localItem.id) || m.noRetur === localItem.noRetur);
+              if (!exists) {
+                merged.push(localItem);
+                needsSync = true;
+              }
+            });
+            setReturns(merged);
+            localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(merged));
+            if (needsSync) {
+              const dbPayload = merged.map(mapReturnRecordToDb);
+              supabase.from('returns').upsert(dbPayload).then(({ error: err }) => {
+                if (err) console.warn('Supabase returns sync notice:', err.message);
+              });
+            }
+            return;
+          }
+
+          setReturns(mappedReturns);
+          localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(mappedReturns));
+          return;
+        }
+      } catch (e) {
+        console.warn('Notice: returns table not yet present in Supabase or fetch skipped:', e);
+      }
+
+      if (currentLocal.length > 0) {
+        setReturns(currentLocal);
+        const dbPayload = currentLocal.map(mapReturnRecordToDb);
+        supabase.from('returns').upsert(dbPayload).then(({ error: err }) => {
+          if (err) console.warn('Supabase returns push notice:', err.message);
+        });
+      }
+    };
+
+    loadReturns();
+  }, []);
 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [discrepancyLogs, setDiscrepancyLogs] = useState<DiscrepancyLog[]>([]);
@@ -384,26 +563,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       return newPart;
-    }
-  };
-
-  const syncLocalToSupabase = async () => {
-    if (parts.length === 0) return;
-    try {
-      const dbPayload = parts.map(mapSparePartToDb);
-      const { data, error } = await supabase
-        .from('products')
-        .upsert(dbPayload, { onConflict: 'id' });
-
-      if (error) {
-        console.error('Gagal sync ke Supabase:', error.message);
-        alert('Gagal simpan ke Supabase: ' + error.message);
-      } else {
-        console.log('Berhasil sync ke Supabase:', data);
-        alert('Berhasil upload data ke Supabase!');
-      }
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -667,6 +826,12 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
     setReturns(prev => [newRecord, ...prev]);
 
+    // Push new return record to Supabase Cloud DB
+    supabase.from('returns').upsert([mapReturnRecordToDb(newRecord)]).then(({ error }) => {
+      if (error) console.warn('Supabase add return notice:', error.message);
+      else console.log('✅ Return record pushed to Supabase Cloud!');
+    });
+
     // If Good Condition, automatically restock to ready-to-sell inventory (+qty)
     if (data.kondisiBarang === 'GOOD_CONDITION') {
       setParts(prev => prev.map(p => {
@@ -697,13 +862,31 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Update Return Record
   const updateReturnRecord = (id: string, updatedData: Partial<ReturnRecord>) => {
-    setReturns(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+    setReturns(prev => {
+      const updatedList = prev.map(r => r.id === id ? { ...r, ...updatedData } : r);
+      const targetRecord = updatedList.find(r => r.id === id);
+      if (targetRecord) {
+        supabase.from('returns').upsert([mapReturnRecordToDb(targetRecord)]).then(({ error }) => {
+          if (error) console.warn('Supabase update return notice:', error.message);
+        });
+      }
+      return updatedList;
+    });
     showToast('✅ Data retur berhasil diperbarui!', 'success');
   };
 
   // Confirm Return Record Status
   const confirmReturnRecord = (id: string) => {
-    setReturns(prev => prev.map(r => r.id === id ? { ...r, status: 'TERKONFIRMASI' } : r));
+    setReturns(prev => {
+      const updatedList = prev.map(r => r.id === id ? { ...r, status: 'TERKONFIRMASI' as ReturnStatus } : r);
+      const targetRecord = updatedList.find(r => r.id === id);
+      if (targetRecord) {
+        supabase.from('returns').upsert([mapReturnRecordToDb(targetRecord)]).then(({ error }) => {
+          if (error) console.warn('Supabase confirm return notice:', error.message);
+        });
+      }
+      return updatedList;
+    });
     showToast('✅ Status retur berhasil dikonfirmasi!', 'success');
   };
 
@@ -719,7 +902,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
     setReturns(prev => prev.map(r => {
       if (r.id === returnId) {
-        return {
+        const updatedReturn: ReturnRecord = {
           ...r,
           isRefurbished: true,
           status: 'REFURBISHED',
@@ -728,6 +911,10 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
           catatanRefurbish: refurbishData.catatanRefurbish,
           tanggalRefurbish: nowStr,
         };
+        supabase.from('returns').upsert([mapReturnRecordToDb(updatedReturn)]).then(({ error }) => {
+          if (error) console.warn('Supabase refurbish return notice:', error.message);
+        });
+        return updatedReturn;
       }
       return r;
     }));
@@ -756,6 +943,39 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
     );
 
     showToast(`🔧 Perbaikan (Refurbished) ${targetReturn.partNumber} berhasil dicatat!`, 'success');
+  };
+
+  // Synchronize all local data (Parts, Transactions, Returns) to Supabase Cloud
+  const syncLocalToSupabase = async () => {
+    try {
+      showToast('🔄 Memeriksa & mengunggah data lokal ke Supabase Cloud...', 'info');
+
+      // 1. Sync Products / Sparepart Catalog
+      if (parts && parts.length > 0) {
+        const dbPayload = parts.map(mapSparePartToDb);
+        const { error: prodErr } = await supabase.from('products').upsert(dbPayload);
+        if (prodErr) console.warn('Supabase sync products notice:', prodErr.message);
+      }
+
+      // 2. Sync Transactions / Inbound Outbound
+      if (transactions && transactions.length > 0) {
+        const dbPayload = transactions.map(mapTransactionToDb);
+        const { error: txErr } = await supabase.from('transactions').upsert(dbPayload);
+        if (txErr) console.warn('Supabase sync transactions notice:', txErr.message);
+      }
+
+      // 3. Sync Returns / Return Records
+      if (returns && returns.length > 0) {
+        const dbPayload = returns.map(mapReturnRecordToDb);
+        const { error: retErr } = await supabase.from('returns').upsert(dbPayload);
+        if (retErr) console.warn('Supabase sync returns notice:', retErr.message);
+      }
+
+      showToast('✅ Seluruh data lokal (Katalog, Transaksi, Return) berhasil disinkronkan ke Supabase Cloud DB!', 'success');
+    } catch (err: any) {
+      console.error('syncLocalToSupabase error:', err);
+      showToast('⚠️ Gagal mensinkronkan data ke Supabase: ' + (err.message || err), 'error');
+    }
   };
 
   // Backup & Restore Full Database JSON
@@ -799,12 +1019,22 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       if (Array.isArray(data.transactions)) {
         setTransactions(data.transactions);
         localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(data.transactions));
+
+        const dbTxPayload = data.transactions.map(mapTransactionToDb);
+        supabase.from('transactions').upsert(dbTxPayload).then(({ error }) => {
+          if (error) console.warn('Supabase import tx sync error:', error.message);
+        });
       }
       if (Array.isArray(data.returns)) {
         setReturns(data.returns);
         localStorage.setItem(LOCAL_STORAGE_KEY_RETURNS, JSON.stringify(data.returns));
+
+        const dbRetPayload = data.returns.map(mapReturnRecordToDb);
+        supabase.from('returns').upsert(dbRetPayload).then(({ error }) => {
+          if (error) console.warn('Supabase import returns sync error:', error.message);
+        });
       }
-      showToast('✅ Berhasil memulihkan seluruh data sistem ke Vercel & Supabase Cloud!', 'success');
+      showToast('✅ Berhasil memulihkan seluruh data sistem ke Supabase Cloud!', 'success');
       return true;
     } catch (e) {
       showToast('❌ Format file backup .json tidak valid!', 'error');
