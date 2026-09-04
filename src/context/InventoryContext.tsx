@@ -561,13 +561,16 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         dbPayload.id = Number(dbPayload.id);
       }
 
-      supabase.from('products').upsert([dbPayload]).then(({ error }) => {
+      // Update existing item in Supabase by kode_item
+      supabase.from('products').update(dbPayload).eq('kode_item', updatedPart.kodeItem).then(({ error }) => {
         if (error) {
-          console.error('❌ Supabase Update Error:', error.message);
-          showToast(`Gagal sync Supabase: ${error.message}`, 'error');
+          console.warn('⚠️ Supabase update notice:', error.message);
+          // Fallback to upsert if row doesn't exist yet
+          supabase.from('products').upsert([dbPayload]).then(({ error: upsertErr }) => {
+            if (upsertErr) console.warn('⚠️ Supabase upsert notice:', upsertErr.message);
+          });
         } else {
           console.log('✅ Berhasil update Supabase!');
-          showToast('✅ Tersimpan di Supabase!', 'success');
         }
       });
 
@@ -591,11 +594,13 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
       supabase.from('products').insert([dbPayload]).select().then(({ data, error }) => {
         if (error) {
-          console.error('❌ Supabase Insert Error:', error.message);
-          showToast(`Gagal simpan ke Supabase: ${error.message}`, 'error');
+          console.warn('⚠️ Supabase insert notice:', error.message);
+          // Fallback upsert
+          supabase.from('products').upsert([dbPayload]).then(({ error: upsertErr }) => {
+            if (upsertErr) console.warn('⚠️ Supabase upsert fallback notice:', upsertErr.message);
+          });
         } else {
           console.log('✅ Berhasil simpan ke Supabase:', data);
-          showToast('✅ Berhasil tersimpan di Supabase!', 'success');
         }
       });
 
