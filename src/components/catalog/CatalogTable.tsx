@@ -255,15 +255,15 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead>
               <tr className="bg-slate-900 text-white uppercase tracking-wider font-extrabold whitespace-nowrap">
-                <th className="py-3.5 px-4 min-w-[180px]">Part Number</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Nama Sparepart</th>
-                <th className="py-3.5 px-4 min-w-[110px]">Brand</th>
-                <th className="py-3.5 px-4 min-w-[110px]">Lokasi Rak</th>
-                <th className="py-3.5 px-4 text-right min-w-[120px]">Unit Cost</th>
-                <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Rekan / Mitra</th>
-                <th className="py-3.5 px-4 text-center min-w-[130px]">Harga Shopee</th>
-                <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Tokopedia/TikTok</th>
-                <th className="py-3.5 px-4 text-center min-w-[140px]">Aksi Operasional</th>
+                <th className="py-4 pl-6 pr-4 min-w-[220px]">Part Number</th>
+                <th className="py-4 px-4 min-w-[200px]">Nama Sparepart</th>
+                <th className="py-4 px-4 min-w-[110px]">Brand</th>
+                <th className="py-4 px-4 min-w-[110px]">Lokasi Rak</th>
+                <th className="py-4 px-4 text-right min-w-[120px]">Unit Cost</th>
+                <th className="py-4 px-4 text-center min-w-[140px]">Harga Rekan / Mitra</th>
+                <th className="py-4 px-4 text-center min-w-[130px]">Harga Shopee</th>
+                <th className="py-4 px-4 text-center min-w-[140px]">Harga Tokopedia/TikTok</th>
+                <th className="py-4 px-4 text-center min-w-[140px]">Aksi Operasional</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
@@ -317,8 +317,8 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                   return (
                     <tr key={part.id} className="hover:bg-slate-50 transition">
                       {/* Photo & Part Number */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
+                      <td className="py-4 pl-6 pr-4 whitespace-nowrap">
+                        <div className="flex items-center gap-4">
                           {(() => {
                             const p = part as any;
                             const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
@@ -336,7 +336,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                                     });
                                   }
                                 }}
-                                className={`w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs ${
+                                className={`w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs ${
                                   imgSrc ? 'cursor-pointer hover:border-[#0B3C85] hover:scale-105 transition' : ''
                                 }`}
                                 title={imgSrc ? 'Klik untuk memperbesar foto produk' : 'Default Foto'}
@@ -345,7 +345,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                                   <img 
                                     src={imgSrc} 
                                     alt={part.namaSparepart} 
-                                    className="w-full h-full object-cover rounded-xl"
+                                    className="w-full h-full object-cover rounded-2xl"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).style.display = 'none';
                                     }}
@@ -356,13 +356,19 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                               </div>
                             );
                           })()}
-                          <div>
-                            <span className="font-mono font-black text-black text-sm block leading-none">{part.kodeItem}</span>
-                            <span className="text-[11px] text-slate-600 font-mono font-bold block mt-1">
-                              Price : {part.hargaShopee && part.hargaShopee > 0 ? formatIdr(part.hargaShopee) : '-'}
+                          <div className="space-y-1">
+                            <span className="font-mono font-black text-black text-sm block leading-tight tracking-tight">
+                              {part.kodeItem}
                             </span>
-                            <div className="mt-1.5 flex items-center gap-1.5">
-                              <span className={`inline-flex items-center gap-1 font-mono font-black px-2 py-0.5 rounded-md text-[10px] border shadow-2xs ${
+                            <span className="text-[11px] text-slate-600 font-mono font-bold block">
+                              Price : {part.hargaShopee && part.hargaShopee > 0 ? (
+                                <span className="text-orange-600 font-extrabold">{formatIdr(part.hargaShopee)}</span>
+                              ) : (
+                                <span className="text-slate-400 font-medium">-</span>
+                              )}
+                            </span>
+                            <div className="pt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 font-mono font-black px-2.5 py-0.5 rounded-md text-[10px] border shadow-2xs ${
                                 isLowStock
                                   ? 'bg-red-100 text-red-700 border-red-300 animate-pulse'
                                   : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -370,7 +376,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                                 📦 Stok: {part.stokRealtime} {part.satuan}
                               </span>
                               {getGoodConditionReturnCount(part.id) > 0 && (
-                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded block mt-0.5" title="Total stok fisik hasil retur utuh yang sudah dimasukkan kembali ke rak">
+                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded" title="Total stok fisik hasil retur utuh yang sudah dimasukkan kembali ke rak">
                                   🔄 Retur Utuh: {getGoodConditionReturnCount(part.id)} Pcs
                                 </span>
                               )}
