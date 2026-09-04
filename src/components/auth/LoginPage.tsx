@@ -21,7 +21,7 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Credentials form - Default Owner Email yusrilznl@gmail.com
-  const [email, setEmail] = useState<string>('yusrilznl@gmail.com');
+  const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
@@ -291,7 +291,7 @@ export const LoginPage: React.FC = () => {
                     required
                     disabled={isLoading}
                     autoComplete="off"
-                    placeholder="Masukkan email terdaftar..."
+                    placeholder="masukkan email terdaftar"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-black font-semibold focus:border-[#0B3C85] focus:bg-white focus:outline-none transition disabled:opacity-50"

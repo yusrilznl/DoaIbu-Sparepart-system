@@ -43,8 +43,8 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
   });
 
   const [salesChannel, setSalesChannel] = useState<SalesChannel>('OFFLINE_STORE');
-  const [gudangAsal, setGudangAsal] = useState<string>('Gudang Utama Magelang');
-  const [pelanggan, setPelanggan] = useState<string>('PT Fardan Utama Niaga Site Workshop A');
+  const [gudangAsal, setGudangAsal] = useState<string>('');
+  const [pelanggan, setPelanggan] = useState<string>('');
   const [salesPerson, setSalesPerson] = useState<string>(currentUser?.name || 'Budi Santoso');
   const [notes, setNotes] = useState<string>('');
 
@@ -284,7 +284,7 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
               <input
                 type="text"
                 required
-                placeholder="Masukkan alamat / lokasi gudang manual..."
+                placeholder="masukkan gudang pengirim"
                 value={gudangAsal}
                 onChange={e => setGudangAsal(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:border-[#0B3C85] focus:outline-none"
@@ -296,7 +296,7 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
               <input
                 type="text"
                 required
-                placeholder="misal: PT Fardan Utama Niaga Project A"
+                placeholder="masukkan tujuan / nama pembeli"
                 value={pelanggan}
                 onChange={e => setPelanggan(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-black focus:border-[#0B3C85] focus:outline-none"

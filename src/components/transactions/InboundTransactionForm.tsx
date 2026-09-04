@@ -38,9 +38,9 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
     return now.toISOString().substring(0, 10) + ' ' + now.toTimeString().substring(0, 5);
   });
 
-  const [gudangTujuan, setGudangTujuan] = useState<string>('Gudang Utama Magelang');
-  const [supplier, setSupplier] = useState<string>('PT Fleetguard Indonesia Utama');
-  const [salesPerson, setSalesPerson] = useState<string>(currentUser?.name || 'Agus Subekti');
+  const [gudangTujuan, setGudangTujuan] = useState<string>('');
+  const [supplier, setSupplier] = useState<string>('');
+  const [salesPerson, setSalesPerson] = useState<string>(currentUser?.name || '');
   const [notes, setNotes] = useState<string>('');
 
   // Line items state
@@ -233,7 +233,7 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
               <input
                 type="text"
                 required
-                placeholder="misal: PT Fleetguard Indonesia Utama"
+                placeholder="masukkan nama supplier"
                 value={supplier}
                 onChange={e => setSupplier(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-black focus:border-[#0B3C85] focus:outline-none"
@@ -245,7 +245,7 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
               <input
                 type="text"
                 required
-                placeholder="Masukkan alamat / lokasi gudang manual..."
+                placeholder="masukkan gudang tujuan"
                 value={gudangTujuan}
                 onChange={e => setGudangTujuan(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:border-[#0B3C85] focus:outline-none"
@@ -257,6 +257,7 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
               <input
                 type="text"
                 required
+                placeholder="Name"
                 value={salesPerson}
                 onChange={e => setSalesPerson(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-black focus:border-[#0B3C85] focus:outline-none"
