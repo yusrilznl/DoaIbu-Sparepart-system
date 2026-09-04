@@ -106,3 +106,67 @@ export const matchSparePartSearch = (part: SparePart, query: string): boolean =>
 
   return false;
 };
+
+/**
+ * Calculates a relevance score for ranking search results.
+ * Direct/exact matches on kodeItem & oemNumber get highest score (1000+).
+ * Matches on namaSparepart get medium score (100+).
+ * Matches on deskripsi / kategori get lowest score (1-10).
+ */
+export const getSearchRelevanceScore = (part: SparePart, query: string): number => {
+  if (!query || !query.trim()) return 0;
+
+  const rawQuery = query.trim().toLowerCase();
+  const normQuery = rawQuery.replace(/[^a-z0-9]/gi, '');
+
+  const itemCode = (part.kodeItem || (part as any).partNumber || '').toLowerCase();
+  const normCode = itemCode.replace(/[^a-z0-9]/gi, '');
+  const oem = (part.oemNumber || (part as any).nomorPartPabrikan || '').toLowerCase();
+  const normOem = oem.replace(/[^a-z0-9]/gi, '');
+  const nama = (part.namaSparepart || '').toLowerCase();
+  const normNama = nama.replace(/[^a-z0-9]/gi, '');
+  const brand = (part.brand || '').toLowerCase();
+  const rak = (part.lokasiRak || '').toLowerCase();
+  const deskripsi = (part.deskripsi || '').toLowerCase();
+  const kategori = (part.kategori || '').toLowerCase();
+
+  let score = 0;
+
+  // 1. Exact match on kodeItem or oemNumber -> Top Priority (1000+)
+  if (itemCode === rawQuery || normCode === normQuery) score += 2000;
+  else if (itemCode.startsWith(rawQuery) || normCode.startsWith(normQuery)) score += 1200;
+  else if (itemCode.includes(rawQuery) || normCode.includes(normQuery)) score += 800;
+
+  // 2. Match on oemNumber -> High Priority (500+)
+  if (oem === rawQuery || normOem === normQuery) score += 1000;
+  else if (oem.startsWith(rawQuery) || normOem.startsWith(normQuery)) score += 600;
+  else if (oem.includes(rawQuery) || normOem.includes(normQuery)) score += 400;
+
+  // 3. Match on namaSparepart -> Medium Priority (100+)
+  if (nama.startsWith(rawQuery) || normNama.startsWith(normQuery)) score += 250;
+  else if (nama.includes(rawQuery) || normNama.includes(normQuery)) score += 150;
+
+  // 4. Match on brand or lokasiRak -> Low Priority (50+)
+  if (brand.includes(rawQuery) || rak.includes(rawQuery)) score += 50;
+
+  // 5. Match on deskripsi or kategori -> Lowest Priority (1-10)
+  if (deskripsi.includes(rawQuery) || kategori.includes(rawQuery)) score += 5;
+
+  return score;
+};
+
+/**
+ * Filters and sorts spareparts by search relevance.
+ * Items matching by part number / OEM appear at the top.
+ */
+export const filterAndSortPartsBySearch = (parts: SparePart[], query: string): SparePart[] => {
+  const trimmed = query.trim();
+  const matched = parts.filter(p => matchSparePartSearch(p, trimmed));
+  if (!trimmed) return matched;
+
+  return matched.sort((a, b) => {
+    const scoreA = getSearchRelevanceScore(a, trimmed);
+    const scoreB = getSearchRelevanceScore(b, trimmed);
+    return scoreB - scoreA;
+  });
+};

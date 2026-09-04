@@ -5,7 +5,7 @@ import { SparePart } from '../../types/inventory';
 import { ArrowDownLeft, Plus, Trash2, Save, PackagePlus, Camera } from 'lucide-react';
 import { ItemModal } from '../catalog/ItemModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
-import { matchSparePartSearch, deduplicatePartsList } from '../../utils/searchUtils';
+import { matchSparePartSearch, deduplicatePartsList, filterAndSortPartsBySearch } from '../../utils/searchUtils';
 
 interface InboundFormProps {
   preselectedPartId?: string;
@@ -181,8 +181,9 @@ export const InboundTransactionForm: React.FC<InboundFormProps> = ({ preselected
     setNotes('');
   };
 
-  const filteredComboboxParts = deduplicatePartsList(
-    parts.filter(p => matchSparePartSearch(p, comboboxSearch))
+  const filteredComboboxParts = filterAndSortPartsBySearch(
+    deduplicatePartsList(parts),
+    comboboxSearch
   );
 
   return (

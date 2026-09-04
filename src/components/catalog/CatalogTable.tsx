@@ -11,7 +11,7 @@ import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { LocationMutationModal } from './LocationMutationModal';
 import { ImageZoomModal } from '../common/ImageZoomModal';
 
-import { matchSparePartSearch, deduplicatePartsList } from '../../utils/searchUtils';
+import { matchSparePartSearch, deduplicatePartsList, getSearchRelevanceScore } from '../../utils/searchUtils';
 
 interface CatalogTableProps {
   onSelectForOutbound: (partId: string) => void;
@@ -55,7 +55,8 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  const rawFilteredParts = parts.filter(part => {
+  const deduplicatedParts = deduplicatePartsList(parts);
+  const rawFilteredParts = deduplicatedParts.filter(part => {
     if (!part) return false;
     const matchesSearch = matchSparePartSearch(part, searchQuery);
     const matchesBrand = selectedBrand === 'ALL' || part.brand === selectedBrand;
@@ -64,8 +65,10 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
     return matchesSearch && matchesBrand && matchesRack;
   });
 
-  // Defensive Deduplication Layer to prevent UI row repetition
-  const filteredParts = deduplicatePartsList(rawFilteredParts);
+  // Sort search results by Relevance (Direct Kode Item / OEM matches appear at the VERY TOP)
+  const filteredParts = searchQuery.trim()
+    ? [...rawFilteredParts].sort((a, b) => getSearchRelevanceScore(b, searchQuery) - getSearchRelevanceScore(a, searchQuery))
+    : rawFilteredParts;
 
   const handleDelete = (id: string, kode: string) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus sparepart "${kode}" dari database?`)) {

@@ -5,7 +5,7 @@ import { SparePart, SalesChannel } from '../../types/inventory';
 import { ArrowUpRight, Plus, Trash2, Save, ShoppingBag, Camera, CheckCircle2, Zap, Layers } from 'lucide-react';
 import { ItemModal } from '../catalog/ItemModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
-import { matchSparePartSearch, deduplicatePartsList } from '../../utils/searchUtils';
+import { matchSparePartSearch, deduplicatePartsList, filterAndSortPartsBySearch } from '../../utils/searchUtils';
 
 interface OutboundFormProps {
   preselectedPartId?: string;
@@ -214,8 +214,9 @@ export const SalesTransactionForm: React.FC<OutboundFormProps> = ({ preselectedP
     setNotes('');
   };
 
-  const filteredComboboxParts = deduplicatePartsList(
-    parts.filter(p => matchSparePartSearch(p, comboboxSearch))
+  const filteredComboboxParts = filterAndSortPartsBySearch(
+    deduplicatePartsList(parts),
+    comboboxSearch
   );
 
   const formatIdr = (val: number) => {
