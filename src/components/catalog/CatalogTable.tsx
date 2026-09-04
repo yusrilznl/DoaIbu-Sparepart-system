@@ -3,7 +3,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { SparePart, TurnoverStatus } from '../../types/inventory';
 import { isSuperAdminRole } from '../../types/auth';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, EyeOff, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
 import { ItemModal } from './ItemModal';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
@@ -29,6 +29,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
   const [selectedRack, setSelectedRack] = useState<string>('ALL');
+  const [revealedMitraIds, setRevealedMitraIds] = useState<Record<string, boolean>>({});
 
   // Modals state
   const [isItemModalOpen, setIsItemModalOpen] = useState<boolean>(false);
@@ -41,6 +42,17 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
 
   const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
   const shouldSensorHpp = !isSuperAdminCategory || isFinancialPrivacyEnabled;
+
+  const handleToggleMitra = (partId: string) => {
+    if (!isSuperAdminCategory) {
+      showToast('Akses Terbatas: Hanya Owner dan Super Admin yang dapat membuka ketentuan Harga Rekan/Mitra.', 'error');
+      return;
+    }
+    setRevealedMitraIds(prev => ({
+      ...prev,
+      [partId]: !prev[partId]
+    }));
+  };
 
   // Extract unique brands & racks
   const uniqueBrands = Array.from(new Set(parts.map(p => p.brand)));
@@ -243,12 +255,12 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead>
               <tr className="bg-slate-900 text-white uppercase tracking-wider font-extrabold whitespace-nowrap">
-                <th className="py-3.5 px-4 min-w-[180px]">Foto & Kode Part</th>
+                <th className="py-3.5 px-4 min-w-[180px]">Part Number</th>
                 <th className="py-3.5 px-4 min-w-[200px]">Nama Sparepart</th>
                 <th className="py-3.5 px-4 min-w-[110px]">Brand</th>
                 <th className="py-3.5 px-4 min-w-[110px]">Lokasi Rak</th>
                 <th className="py-3.5 px-4 text-right min-w-[120px]">Unit Cost</th>
-                <th className="py-3.5 px-4 text-right min-w-[120px]">Harga Toko</th>
+                <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Rekan / Mitra</th>
                 <th className="py-3.5 px-4 text-center min-w-[130px]">Harga Shopee</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Harga Tokopedia/TikTok</th>
                 <th className="py-3.5 px-4 text-center min-w-[140px]">Aksi Operasional</th>
@@ -302,57 +314,53 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
               ) : (
                 filteredParts.map(part => {
                   const isLowStock = part.stokRealtime <= part.stokMin;
-// Tambahkan di dalam filteredParts.map(part => {
-console.log("Data Part:", part);
                   return (
                     <tr key={part.id} className="hover:bg-slate-50 transition">
                       {/* Photo & Part Number */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                  {/* KODE BARU - PASTI MUNCIUL & TAHAN ERROR */}
-{/* Kolom Foto Sparepart - Support Array gambar & string fotoProduk */}
-{(() => {
-  const p = part as any;
-  const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
-    ? p.gambar[0] 
-    : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
+                          {(() => {
+                            const p = part as any;
+                            const imgSrc = (Array.isArray(p.gambar) && p.gambar.length > 0) 
+                              ? p.gambar[0] 
+                              : (p.fotoProduk || p.foto || p.imageUrl || (typeof p.gambar === 'string' ? p.gambar : null));
 
-  return (
-    <div 
-      onClick={() => {
-        if (imgSrc) {
-          setZoomedImage({
-            src: imgSrc,
-            title: part.namaSparepart,
-            subTitle: `Part No: ${part.kodeItem} | Brand: ${part.brand} | Rak: ${part.lokasiRak}`
-          });
-        }
-      }}
-      className={`w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs ${
-        imgSrc ? 'cursor-pointer hover:border-[#0B3C85] hover:scale-105 transition' : ''
-      }`}
-      title={imgSrc ? 'Klik untuk memperbesar foto produk' : 'Default Foto'}
-    >
-      {imgSrc ? (
-        <img 
-          src={imgSrc} 
-          alt={part.namaSparepart} 
-          className="w-full h-full object-cover rounded-xl"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      ) : (
-        <Layers className="w-5 h-5 text-slate-400" />
-      )}
-    </div>
-  );
-})()}
+                            return (
+                              <div 
+                                onClick={() => {
+                                  if (imgSrc) {
+                                    setZoomedImage({
+                                      src: imgSrc,
+                                      title: part.namaSparepart,
+                                      subTitle: `Part No: ${part.kodeItem} | Brand: ${part.brand} | Rak: ${part.lokasiRak}`
+                                    });
+                                  }
+                                }}
+                                className={`w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs ${
+                                  imgSrc ? 'cursor-pointer hover:border-[#0B3C85] hover:scale-105 transition' : ''
+                                }`}
+                                title={imgSrc ? 'Klik untuk memperbesar foto produk' : 'Default Foto'}
+                              >
+                                {imgSrc ? (
+                                  <img 
+                                    src={imgSrc} 
+                                    alt={part.namaSparepart} 
+                                    className="w-full h-full object-cover rounded-xl"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <Layers className="w-5 h-5 text-slate-400" />
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div>
                             <span className="font-mono font-black text-black text-sm block leading-none">{part.kodeItem}</span>
-                            {part.oemNumber && (
-                              <span className="text-[10px] text-slate-500 font-mono block mt-1">OEM: {part.oemNumber}</span>
-                            )}
+                            <span className="text-[11px] text-slate-600 font-mono font-bold block mt-1">
+                              Price : {part.hargaShopee && part.hargaShopee > 0 ? formatIdr(part.hargaShopee) : '-'}
+                            </span>
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <span className={`inline-flex items-center gap-1 font-mono font-black px-2 py-0.5 rounded-md text-[10px] border shadow-2xs ${
                                 isLowStock
@@ -399,22 +407,43 @@ console.log("Data Part:", part);
                         )}
                       </td>
 
-                      {/* Harga Toko Offline */}
-                      <td className="py-3.5 px-4 text-right font-mono font-black whitespace-nowrap min-w-[120px]">
-                        <span className="text-emerald-700">{formatIdr(part.hargaJual || 0)}</span>
+                      {/* Harga Rekan / Mitra (S&K Berlaku - Terhide Default) */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap min-w-[140px]">
+                        {(() => {
+                          const isRevealed = Boolean(revealedMitraIds[part.id]);
+                          return (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg">
+                              <span className="text-xs font-bold font-mono">
+                                {isRevealed ? (
+                                  <span className="text-emerald-700 font-black">S&K Berlaku</span>
+                                ) : (
+                                  <span className="text-slate-400 tracking-widest text-[11px]">••••••••</span>
+                                )}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleMitra(part.id)}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                title={isRevealed ? 'Sembunyikan' : 'Buka Ketentuan (Khusus Owner / Super Admin)'}
+                              >
+                                {isRevealed ? <EyeOff className="w-3.5 h-3.5 text-slate-600" /> : <Eye className="w-3.5 h-3.5 text-slate-400" />}
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Harga Shopee */}
                       <td className="py-3.5 px-4 text-center font-mono font-black whitespace-nowrap min-w-[130px]">
                         <span className="text-orange-600">
-                          {formatIdr(part.hargaShopee || (part.hargaJual ? Math.round(part.hargaJual * 1.085) : 0))}
+                          {part.hargaShopee && part.hargaShopee > 0 ? formatIdr(part.hargaShopee) : '-'}
                         </span>
                       </td>
 
                       {/* Harga Tokopedia / TikTok */}
                       <td className="py-3.5 px-4 text-center font-mono font-black whitespace-nowrap min-w-[140px]">
                         <span className="text-emerald-800">
-                          {formatIdr(part.hargaTokopedia || (part.hargaJual ? Math.round(part.hargaJual * 1.08) : 0))}
+                          {part.hargaTokopedia && part.hargaTokopedia > 0 ? formatIdr(part.hargaTokopedia) : '-'}
                         </span>
                       </td>
 

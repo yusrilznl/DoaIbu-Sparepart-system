@@ -23,6 +23,12 @@ export interface SparePart {
   hargaTokopedia?: number;
   adminFeeTokopediaPercent?: number;
 
+  // Dimensi Fisik Produk
+  beratGram?: number;
+  tinggiCm?: number;
+  lebarCm?: number;
+  panjangCm?: number;
+
   // Backward compatibility optional fields
   hargaMarketplace?: number;
   adminFeePercent?: number;

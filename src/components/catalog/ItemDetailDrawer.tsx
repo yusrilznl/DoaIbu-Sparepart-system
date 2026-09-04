@@ -142,16 +142,18 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                     <h4 className="font-black text-slate-900 text-base leading-tight">{part.namaSparepart}</h4>
                     <p className="text-xs text-[#0B3C85] font-extrabold">Brand: {part.brand}</p>
                     <p className="text-xs text-red-600 font-mono font-bold">Lokasi Rak / Alamat: {part.lokasiRak}</p>
-                    {part.oemNumber && (
-                      <p className="text-[11px] text-slate-500 font-mono">OEM Ref: {part.oemNumber}</p>
-                    )}
+                    {(part.beratGram || part.panjangCm || part.lebarCm || part.tinggiCm) ? (
+                      <p className="text-[11px] text-slate-600 font-mono font-semibold">
+                        Dimensi: {part.beratGram ? `${part.beratGram}g` : '-'} | {part.panjangCm || 0} x {part.lebarCm || 0} x {part.tinggiCm || 0} cm
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
                 {/* Multi-Channel Pricing & Financial Privacy Card */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-                    STRUKTUR MULTI-HARGA PENJUALAN
+                    STRUKTUR HARGA PENJUALAN
                   </span>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -165,8 +167,8 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-bold text-slate-500 block">Harga Offline Store</span>
-                      <span className="font-mono font-black text-sm text-emerald-700">{formatIdr(part.hargaJual)}</span>
+                      <span className="text-[10px] font-bold text-slate-500 block">Harga Rekan / Mitra</span>
+                      <span className="font-mono font-black text-xs text-emerald-700 block mt-1">S&K Berlaku</span>
                     </div>
                   </div>
 
@@ -174,10 +176,10 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                   <div className="bg-orange-50 p-3 rounded-xl border border-orange-200 space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-extrabold text-orange-950 flex items-center gap-1.5">
-                        <ShoppingBag className="w-4 h-4 text-orange-600" /> Harga Shopee (Admin {part.adminFeeShopeePercent || 8.5}%)
+                        <ShoppingBag className="w-4 h-4 text-orange-600" /> Harga Jual Shopee
                       </span>
                       <span className="font-mono font-black text-sm text-orange-600">
-                        {formatIdr(part.hargaShopee || Math.round(part.hargaJual * 1.085))}
+                        {part.hargaShopee && part.hargaShopee > 0 ? formatIdr(part.hargaShopee) : '-'}
                       </span>
                     </div>
                   </div>
@@ -186,20 +188,13 @@ export const ItemDetailDrawer: React.FC<DrawerProps> = ({
                   <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-extrabold text-emerald-950 flex items-center gap-1.5">
-                        <ShoppingBag className="w-4 h-4 text-emerald-600" /> Harga Tokopedia/TikTok (Admin {part.adminFeeTokopediaPercent || 8.0}%)
+                        <ShoppingBag className="w-4 h-4 text-emerald-600" /> Harga Jual Tokopedia / TikTok
                       </span>
                       <span className="font-mono font-black text-sm text-emerald-800">
-                        {formatIdr(part.hargaTokopedia || Math.round(part.hargaJual * 1.08))}
+                        {part.hargaTokopedia && part.hargaTokopedia > 0 ? formatIdr(part.hargaTokopedia) : '-'}
                       </span>
                     </div>
                   </div>
-
-                  {!shouldSensorHpp && (
-                    <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900">
-                      <span>Profit Margin Toko (Offline):</span>
-                      <span className="font-mono font-black text-sm">{formatIdr(part.hargaJual - part.hargaBeli)} (+{marginPercent}%)</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Stock Level Card */}
