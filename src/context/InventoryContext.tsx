@@ -659,10 +659,15 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       })
     );
 
-    setTransactions(prev => [newTx, ...prev]);
+    // ✅ Simpan transaksi ke localStorage
+    setTransactions(prev => {
+      const updated = [newTx, ...prev];
+      localStorage.setItem(LOCAL_STORAGE_KEY_TX, JSON.stringify(updated));
+      return updated;
+    });
 
-    // Insert to Supabase DB `transactions` table
-    supabase.from('transactions').insert([{
+    // ✅ Upsert ke Supabase (pakai onConflict no_transaksi agar tidak duplikat jika retry)
+    supabase.from('transactions').upsert([{
       no_transaksi: newTx.noTransaksi,
       tanggal: newTx.tanggal,
       jenis_transaksi: newTx.jenisTransaksi,
@@ -677,8 +682,9 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       total_nilai_jual: newTx.totalNilaiJual,
       notes: newTx.notes || '',
       created_date: newTx.createdDate
-    }]).then(({ error }) => {
-      if (error) console.error('Supabase transaction insert error:', error.message);
+    }], { onConflict: 'no_transaksi' }).then(({ error }) => {
+      if (error) console.error('Supabase transaction upsert error:', error.message);
+      else console.log('✅ Transaksi berhasil disimpan ke Supabase:', newTx.noTransaksi);
     });
 
     const actionMap: Record<string, ActivityAction> = {
