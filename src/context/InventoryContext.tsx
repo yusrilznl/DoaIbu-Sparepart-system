@@ -3,6 +3,7 @@ import { SparePart, Transaction, OpnameItem, ActivityLog, ActivityAction, Discre
 import { INITIAL_SPAREPARTS, INITIAL_TRANSACTIONS } from '../mock/initialData';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { deduplicatePartsList, normalizePartCode } from '../utils/searchUtils';
 
 export interface Warehouse {
   id: string;
@@ -198,26 +199,6 @@ const mapTransactionToDb = (t: Transaction) => ({
   created_date: t.createdDate
 });
 
-// 6. Helper: Deduplicate spareparts by kodeItem / partNumber (ignoring spaces & case)
-const deduplicateParts = (partsList: SparePart[]): SparePart[] => {
-  const map = new Map<string, SparePart>();
-  partsList.forEach(p => {
-    if (!p) return;
-    const code = (p.kodeItem || (p as any).partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
-    if (!code) return;
-    if (!map.has(code)) {
-      map.set(code, p);
-    } else {
-      const existing = map.get(code)!;
-      // Prefer the one with valid oemNumber or non-empty deskripsi
-      if ((!existing.oemNumber || existing.oemNumber === '-') && p.oemNumber && p.oemNumber !== '-') {
-        map.set(code, p);
-      }
-    }
-  });
-  return Array.from(map.values());
-};
-
 const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const auth = useAuth();
 
@@ -227,13 +208,13 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         const parsed = JSON.parse(localData);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return deduplicateParts(parsed);
+          return deduplicatePartsList(parsed);
         }
       } catch (e) {
         console.error('Failed to parse parts from localStorage', e);
       }
     }
-    return deduplicateParts(INITIAL_SPAREPARTS);
+    return deduplicatePartsList(INITIAL_SPAREPARTS);
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -246,7 +227,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            currentLocal = deduplicateParts(parsed);
+            currentLocal = deduplicatePartsList(parsed);
           }
         } catch (e) {
           console.error('Failed to parse parts from localStorage', e);
@@ -265,14 +246,15 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
           const duplicateDbIdsToDelete: any[] = [];
 
           data.forEach((row: any) => {
-            const code = (row.kode_item || row.kodeItem || row.part_number || row.partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
-            if (!code) return;
-            if (seenDbCodesMap.has(code)) {
+            const rawCode = String(row.kode_item || row.kodeItem || row.part_number || row.partNumber || '');
+            const normKey = normalizePartCode(rawCode);
+            if (!normKey) return;
+            if (seenDbCodesMap.has(normKey)) {
               if (row.id !== undefined && row.id !== null) {
                 duplicateDbIdsToDelete.push(row.id);
               }
             } else {
-              seenDbCodesMap.set(code, row);
+              seenDbCodesMap.set(normKey, row);
             }
           });
 
@@ -286,7 +268,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
           const uniqueDbRows = Array.from(seenDbCodesMap.values());
           const mappedParts = uniqueDbRows.map(mapDbToSparePart);
-          const deduplicatedParts = deduplicateParts([...mappedParts, ...currentLocal]);
+          const deduplicatedParts = deduplicatePartsList([...mappedParts, ...currentLocal]);
 
           setParts(deduplicatedParts);
           localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedParts));
@@ -1085,7 +1067,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const cleanDuplicateParts = async () => {
-    const deduplicated = deduplicateParts(parts);
+    const deduplicated = deduplicatePartsList(parts);
     const removedCount = parts.length - deduplicated.length;
     setParts(deduplicated);
     localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicated));
@@ -1096,12 +1078,13 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         const seenMap = new Map<string, any>();
         const idsToDelete: any[] = [];
         data.forEach((row: any) => {
-          const code = String(row.kode_item || row.part_number || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
-          if (!code) return;
-          if (seenMap.has(code)) {
+          const rawCode = String(row.kode_item || row.part_number || '');
+          const normKey = normalizePartCode(rawCode);
+          if (!normKey) return;
+          if (seenMap.has(normKey)) {
             idsToDelete.push(row.id);
           } else {
-            seenMap.set(code, row);
+            seenMap.set(normKey, row);
           }
         });
 
@@ -1114,7 +1097,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       console.warn('Clean DB error:', e);
     }
 
-    showToast(`🧹 Sukses! ${removedCount > 0 ? removedCount : 0} data duplikat berhasil dibersihkan!`, 'success');
+    showToast(`🧹 Sukses! Sistem dibersihkan. ${removedCount > 0 ? removedCount : 0} data duplikat berhasil digabung!`, 'success');
   };
 
   return (
