@@ -18,18 +18,18 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   const [brand, setBrand] = useState(initialPart?.brand || 'GENUINE');
   const [lokasiRak, setLokasiRak] = useState(initialPart?.lokasiRak || 'A-01-01');
   const [satuan, setSatuan] = useState(initialPart?.satuan || 'Pcs');
-  const [stokRealtime, setStokRealtime] = useState(initialPart?.stokRealtime || 0);
-  const [stokMin, setStokMin] = useState(initialPart?.stokMin || 2);
-  const [stokMax, setStokMax] = useState(initialPart?.stokMax || 0);
-  const [hargaBeli, setHargaBeli] = useState(initialPart?.hargaBeli || 0);
-  const [hargaJual, setHargaJual] = useState(initialPart?.hargaJual || 0);
+  const [stokRealtime, setStokRealtime] = useState<string | number>(initialPart?.stokRealtime !== undefined ? initialPart.stokRealtime : '');
+  const [stokMin, setStokMin] = useState<string | number>(initialPart?.stokMin !== undefined ? initialPart.stokMin : 2);
+  const [stokMax, setStokMax] = useState<string | number>(initialPart?.stokMax !== undefined ? initialPart.stokMax : '');
+  const [hargaBeli, setHargaBeli] = useState<string | number>(initialPart?.hargaBeli !== undefined && initialPart.hargaBeli !== 0 ? initialPart.hargaBeli : '');
+  const [hargaJual, setHargaJual] = useState<string | number>(initialPart?.hargaJual !== undefined && initialPart.hargaJual !== 0 ? initialPart.hargaJual : '');
 
   // Dedicated Marketplace Pricing
-  const [hargaShopee, setHargaShopee] = useState(initialPart?.hargaShopee || initialPart?.hargaJual || 0);
-  const [adminFeeShopeePercent, setAdminFeeShopeePercent] = useState(initialPart?.adminFeeShopeePercent || 8.5);
+  const [hargaShopee, setHargaShopee] = useState<string | number>(initialPart?.hargaShopee || (initialPart?.hargaJual !== undefined && initialPart.hargaJual !== 0 ? initialPart.hargaJual : ''));
+  const [adminFeeShopeePercent, setAdminFeeShopeePercent] = useState<string | number>(initialPart?.adminFeeShopeePercent !== undefined ? initialPart.adminFeeShopeePercent : 8.5);
 
-  const [hargaTokopedia, setHargaTokopedia] = useState(initialPart?.hargaTokopedia || initialPart?.hargaJual || 0);
-  const [adminFeeTokopediaPercent, setAdminFeeTokopediaPercent] = useState(initialPart?.adminFeeTokopediaPercent || 8.0);
+  const [hargaTokopedia, setHargaTokopedia] = useState<string | number>(initialPart?.hargaTokopedia || (initialPart?.hargaJual !== undefined && initialPart.hargaJual !== 0 ? initialPart.hargaJual : ''));
+  const [adminFeeTokopediaPercent, setAdminFeeTokopediaPercent] = useState<string | number>(initialPart?.adminFeeTokopediaPercent !== undefined ? initialPart.adminFeeTokopediaPercent : 8.0);
 
   const initialFoto = initialPart
     ? (Array.isArray((initialPart as any).gambar) && (initialPart as any).gambar.length > 0
@@ -43,6 +43,14 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
 
+  // Helper parser for decimal/currency with comma support
+  const parseNum = (val: string | number | undefined): number => {
+    if (val === undefined || val === null || val === '') return 0;
+    const cleanStr = String(val).replace(',', '.');
+    const n = parseFloat(cleanStr);
+    return isNaN(n) ? 0 : n;
+  };
+
   // Format IDR Helper Function
   const formatIdr = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -52,17 +60,24 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
     }).format(val || 0);
   };
 
+  const numHargaBeli = parseNum(hargaBeli);
+  const numHargaJual = parseNum(hargaJual);
+  const numHargaShopee = parseNum(hargaShopee);
+  const numHargaTokopedia = parseNum(hargaTokopedia);
+  const numFeeShopee = parseNum(adminFeeShopeePercent);
+  const numFeeTokopedia = parseNum(adminFeeTokopediaPercent);
+
   // Profit Margin Offline Store
-  const marginStoreRp = hargaJual - hargaBeli;
-  const marginPercentage = hargaBeli > 0 ? ((marginStoreRp / hargaBeli) * 100).toFixed(1) : '0';
+  const marginStoreRp = numHargaJual - numHargaBeli;
+  const marginPercentage = numHargaBeli > 0 ? ((marginStoreRp / numHargaBeli) * 100).toFixed(1) : '0';
 
   // Shopee Profit Calculation
-  const adminShopeeRp = (hargaShopee * adminFeeShopeePercent) / 100;
-  const netProfitShopee = hargaShopee - adminShopeeRp - hargaBeli;
+  const adminShopeeRp = (numHargaShopee * numFeeShopee) / 100;
+  const netProfitShopee = numHargaShopee - adminShopeeRp - numHargaBeli;
 
   // Tokopedia / TikTok Shop Profit Calculation
-  const adminTokopediaRp = (hargaTokopedia * adminFeeTokopediaPercent) / 100;
-  const netProfitTokopedia = hargaTokopedia - adminTokopediaRp - hargaBeli;
+  const adminTokopediaRp = (numHargaTokopedia * numFeeTokopedia) / 100;
+  const netProfitTokopedia = numHargaTokopedia - adminTokopediaRp - numHargaBeli;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,15 +99,15 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
       brand: brand.trim() || 'GENUINE',
       lokasiRak: lokasiRak.trim().toUpperCase(),
       satuan: satuan.trim() || 'Pcs',
-      stokRealtime: Number(stokRealtime),
-      stokMin: Number(stokMin),
-      stokMax: Number(stokMax) || undefined,
-      hargaBeli: Number(hargaBeli),
-      hargaJual: Number(hargaJual),
-      hargaShopee: Number(hargaShopee),
-      adminFeeShopeePercent: Number(adminFeeShopeePercent),
-      hargaTokopedia: Number(hargaTokopedia),
-      adminFeeTokopediaPercent: Number(adminFeeTokopediaPercent),
+      stokRealtime: parseNum(stokRealtime),
+      stokMin: parseNum(stokMin),
+      stokMax: stokMax !== '' ? parseNum(stokMax) : undefined,
+      hargaBeli: numHargaBeli,
+      hargaJual: numHargaJual,
+      hargaShopee: numHargaShopee,
+      adminFeeShopeePercent: numFeeShopee,
+      hargaTokopedia: numHargaTokopedia,
+      adminFeeTokopediaPercent: numFeeTokopedia,
       fotoProduk: fotoProduk.trim() || initialFoto || '',
       deskripsi: deskripsi.trim(),
       terakhirDiupdate: new Date().toISOString()
@@ -284,10 +299,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
             <div>
               <label className="block text-slate-700 font-bold mb-1">Stok Fisik Awal*</label>
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
                 value={stokRealtime}
-                onChange={e => setStokRealtime(Number(e.target.value))}
+                onChange={e => setStokRealtime(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-black focus:border-[#0B3C85] focus:outline-none"
               />
             </div>
@@ -295,10 +311,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
             <div>
               <label className="block text-slate-700 font-bold mb-1">Batas Stok Min*</label>
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
+                placeholder="2"
                 value={stokMin}
-                onChange={e => setStokMin(Number(e.target.value))}
+                onChange={e => setStokMin(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-red-600 focus:border-[#0B3C85] focus:outline-none"
               />
             </div>
@@ -314,10 +331,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
               <div>
                 <label className="block text-slate-700 font-bold mb-1">HPP / Harga Beli Modal (Rp)*</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
                   value={hargaBeli}
-                  onChange={e => setHargaBeli(Number(e.target.value))}
+                  onChange={e => setHargaBeli(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:border-[#0B3C85] focus:outline-none"
                 />
               </div>
@@ -325,10 +343,11 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Harga Jual Toko Offline (Rp)*</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
                   value={hargaJual}
-                  onChange={e => setHargaJual(Number(e.target.value))}
+                  onChange={e => setHargaJual(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-emerald-700 focus:border-[#0B3C85] focus:outline-none"
                 />
                 <span className="text-[10px] font-bold text-emerald-600 mt-1 block">
@@ -350,35 +369,40 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-orange-700 text-xs">🧡 Shopee Channel</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-500">% Admin:</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={adminFeeShopeePercent}
-                      onChange={e => setAdminFeeShopeePercent(Number(e.target.value))}
-                      className="w-14 px-1.5 py-0.5 text-center font-mono font-bold border border-slate-300 rounded focus:outline-none"
-                    />
+                    <span className="text-[10px] font-bold text-slate-500">P&T FEE :</span>
+                    <div className="flex items-center gap-0.5">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="8.5"
+                        value={adminFeeShopeePercent}
+                        onChange={e => setAdminFeeShopeePercent(e.target.value)}
+                        className="w-14 px-1.5 py-0.5 text-center font-mono font-bold border border-slate-300 rounded text-xs focus:outline-none focus:border-orange-500 bg-white"
+                      />
+                      <span className="text-[10px] font-bold text-slate-500">%</span>
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Harga Shopee (Rp)</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
                     value={hargaShopee}
-                    onChange={e => setHargaShopee(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-orange-700 focus:border-orange-600 focus:outline-none"
+                    onChange={e => setHargaShopee(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-orange-700 focus:bg-white focus:border-orange-600 focus:outline-none"
                   />
                 </div>
 
                 <div className="text-[10px] pt-1 border-t border-slate-100 space-y-0.5">
                   <div className="flex justify-between text-slate-500 font-semibold">
-                    <span>Admin Shopee ({adminFeeShopeePercent}%):</span>
+                    <span>Platform & Transaction Fee ({adminFeeShopeePercent || 0}%):</span>
                     <span className="font-mono text-red-600">-{formatIdr(adminShopeeRp)}</span>
                   </div>
                   <div className="flex justify-between font-extrabold text-slate-900">
-                    <span>Profit Bersih Shopee:</span>
+                    <span>Net Payout:</span>
                     <span className={`font-mono ${netProfitShopee > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatIdr(netProfitShopee)}</span>
                   </div>
                 </div>
@@ -389,35 +413,40 @@ export const ItemModal: React.FC<ItemModalProps> = ({ initialPart, onClose }) =>
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-emerald-800 text-xs">🟢 Tokopedia / TikTok</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-500">% Admin:</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={adminFeeTokopediaPercent}
-                      onChange={e => setAdminFeeTokopediaPercent(Number(e.target.value))}
-                      className="w-14 px-1.5 py-0.5 text-center font-mono font-bold border border-slate-300 rounded focus:outline-none"
-                    />
+                    <span className="text-[10px] font-bold text-slate-500">P&T FEE :</span>
+                    <div className="flex items-center gap-0.5">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="8"
+                        value={adminFeeTokopediaPercent}
+                        onChange={e => setAdminFeeTokopediaPercent(e.target.value)}
+                        className="w-14 px-1.5 py-0.5 text-center font-mono font-bold border border-slate-300 rounded text-xs focus:outline-none focus:border-emerald-600 bg-white"
+                      />
+                      <span className="text-[10px] font-bold text-slate-500">%</span>
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Harga Tokopedia / TikTok (Rp)</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
                     value={hargaTokopedia}
-                    onChange={e => setHargaTokopedia(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-emerald-800 focus:border-emerald-600 focus:outline-none"
+                    onChange={e => setHargaTokopedia(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-emerald-800 focus:bg-white focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
 
                 <div className="text-[10px] pt-1 border-t border-slate-100 space-y-0.5">
                   <div className="flex justify-between text-slate-500 font-semibold">
-                    <span>Admin Tokopedia/TikTok ({adminFeeTokopediaPercent}%):</span>
+                    <span>Platform & Transaction Fee ({adminFeeTokopediaPercent || 0}%):</span>
                     <span className="font-mono text-red-600">-{formatIdr(adminTokopediaRp)}</span>
                   </div>
                   <div className="flex justify-between font-extrabold text-slate-900">
-                    <span>Profit Bersih Tokopedia/TikTok:</span>
+                    <span>Net Payout:</span>
                     <span className={`font-mono ${netProfitTokopedia > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatIdr(netProfitTokopedia)}</span>
                   </div>
                 </div>
