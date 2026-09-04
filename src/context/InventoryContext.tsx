@@ -149,7 +149,10 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
 
       try {
         const { data, error } = await supabase.from('products').select('*');
-        if (!error && data && data.length > 0) {
+        if (error) {
+          console.warn('⚠️ Supabase fetch products notice:', error.message);
+        } else if (data && data.length > 0) {
+          console.log(`✅ Loaded ${data.length} products from Supabase Cloud DB!`);
           const mappedParts = data.map(mapDbToSparePart);
           
           if (currentLocal.length > 0) {
@@ -163,17 +166,6 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
               if (dbIndex === -1) {
                 merged.push(localItem);
                 needsDbSync = true;
-              } else {
-                if ((localItem.hargaBeli || 0) > 0 && (merged[dbIndex].hargaBeli || 0) === 0) {
-                  merged[dbIndex] = {
-                    ...merged[dbIndex],
-                    hargaBeli: localItem.hargaBeli,
-                    hargaJual: localItem.hargaJual || merged[dbIndex].hargaJual,
-                    hargaShopee: localItem.hargaShopee || merged[dbIndex].hargaShopee,
-                    hargaTokopedia: localItem.hargaTokopedia || merged[dbIndex].hargaTokopedia
-                  };
-                  needsDbSync = true;
-                }
               }
             });
 
