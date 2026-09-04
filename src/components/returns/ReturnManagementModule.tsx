@@ -6,6 +6,7 @@ import {
   RotateCcw, Search, Filter, Plus, CheckCircle2, AlertOctagon, 
   Wrench, Eye, Edit2, Check, X, FileSpreadsheet, MapPin, Building2
 } from 'lucide-react';
+import { matchSparePartSearch, deduplicatePartsList } from '../../utils/searchUtils';
 
 export const ReturnManagementModule: React.FC = () => {
   const { parts, returns, addReturnRecord, updateReturnRecord, confirmReturnRecord, refurbishReturnItem, showToast } = useInventory();
@@ -41,10 +42,8 @@ export const ReturnManagementModule: React.FC = () => {
   const [catatanRefurbish, setCatatanRefurbish] = useState('');
 
   // Filtered Parts for Combobox
-  const filteredPartsForForm = parts.filter(p =>
-    p.kodeItem.toLowerCase().includes(partSearch.toLowerCase()) ||
-    p.namaSparepart.toLowerCase().includes(partSearch.toLowerCase()) ||
-    p.brand.toLowerCase().includes(partSearch.toLowerCase())
+  const filteredPartsForForm = deduplicatePartsList(
+    parts.filter(p => matchSparePartSearch(p, partSearch))
   );
 
   // Filtered Returns List

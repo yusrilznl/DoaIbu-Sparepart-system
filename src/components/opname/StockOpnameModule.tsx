@@ -3,6 +3,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { SparePart } from '../../types/inventory';
 import { ClipboardCheck, Search, Filter, Camera, Save, RefreshCw, CheckCircle2, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { matchSparePartSearch } from '../../utils/searchUtils';
 
 interface OpnameEntry {
   partId: string;
@@ -140,10 +141,12 @@ export const StockOpnameModule: React.FC = () => {
   };
 
   const filteredOpname = opnameData.filter(item => {
-    const matchesSearch =
+    const p = parts.find(part => part.id === item.partId);
+    const matchesSearch = p ? matchSparePartSearch(p, searchQuery) : (
       item.kodeItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.namaSparepart.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.lokasiRak.toLowerCase().includes(searchQuery.toLowerCase());
+      item.lokasiRak.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const matchesRak = selectedRak === 'ALL' || item.lokasiRak === selectedRak;
 

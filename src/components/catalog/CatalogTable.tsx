@@ -11,6 +11,8 @@ import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { LocationMutationModal } from './LocationMutationModal';
 import { ImageZoomModal } from '../common/ImageZoomModal';
 
+import { matchSparePartSearch, deduplicatePartsList } from '../../utils/searchUtils';
+
 interface CatalogTableProps {
   onSelectForOutbound: (partId: string) => void;
   onSelectForInbound: (partId: string) => void;
@@ -55,17 +57,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
 
   const rawFilteredParts = parts.filter(part => {
     if (!part) return false;
-    const itemCode = part.kodeItem || (part as any).partNumber || '';
-    if (!itemCode) return false;
-
-    const searchLower = searchQuery.trim().toLowerCase();
-
-    const matchesSearch = !searchLower ||
-      itemCode.toLowerCase().includes(searchLower) ||
-      (part.namaSparepart || '').toLowerCase().includes(searchLower) ||
-      (part.oemNumber || '').toLowerCase().includes(searchLower) ||
-      (part.lokasiRak || '').toLowerCase().includes(searchLower);
-
+    const matchesSearch = matchSparePartSearch(part, searchQuery);
     const matchesBrand = selectedBrand === 'ALL' || part.brand === selectedBrand;
     const matchesRack = selectedRack === 'ALL' || part.lokasiRak === selectedRack;
 
@@ -73,16 +65,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   });
 
   // Defensive Deduplication Layer to prevent UI row repetition
-  const filteredParts = (() => {
-    const map = new Map<string, SparePart>();
-    rawFilteredParts.forEach(p => {
-      const code = (p.kodeItem || (p as any).partNumber || '').replace(/[\s\u00a0]+/g, '').toLowerCase();
-      if (code && !map.has(code)) {
-        map.set(code, p);
-      }
-    });
-    return Array.from(map.values());
-  })();
+  const filteredParts = deduplicatePartsList(rawFilteredParts);
 
   const handleDelete = (id: string, kode: string) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus sparepart "${kode}" dari database?`)) {
@@ -329,11 +312,20 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Cari kode item / nama barang / OEM / rak bin..."
+            placeholder="Cari kode item / nama barang / OEM / pabrikan / rak bin..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-black focus:border-[#0B3C85] focus:outline-none"
+            className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-black focus:border-[#0B3C85] focus:outline-none"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2 text-slate-400 hover:text-slate-700 text-xs font-bold bg-slate-200 hover:bg-slate-300 w-5 h-5 rounded-full flex items-center justify-center transition"
+              title="Bersihkan Pencarian"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -386,8 +378,46 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             <tbody className="divide-y divide-slate-200 font-medium text-slate-900">
               {filteredParts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold whitespace-nowrap">
-                    Tidak ada sparepart yang sesuai dengan filter pencarian.
+                  <td colSpan={9} className="py-10 text-center text-slate-500 font-semibold whitespace-nowrap">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p className="text-sm font-bold text-slate-700">
+                        {searchQuery ? `Tidak ditemukan sparepart dengan kata kunci "${searchQuery}"` : 'Belum ada data sparepart.'}
+                      </p>
+                      {searchQuery && (
+                        <div className="flex items-center justify-center gap-3 mt-2">
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold rounded-xl transition"
+                          >
+                            🔄 Reset Pencarian
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingPart({
+                                id: '',
+                                kodeItem: searchQuery.toUpperCase().trim(),
+                                namaSparepart: '',
+                                brand: 'GENUINE',
+                                oemNumber: '',
+                                lokasiRak: 'A-01-01',
+                                stokRealtime: 0,
+                                stokMin: 2,
+                                satuan: 'PCS',
+                                hargaBeli: 0,
+                                hargaJual: 0,
+                                hargaShopee: 0,
+                                hargaTokopedia: 0,
+                                terakhirDiupdate: new Date().toISOString()
+                              });
+                              setIsItemModalOpen(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-[#0B3C85] hover:bg-blue-900 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1"
+                          >
+                            + Tambah Sparepart "{searchQuery.toUpperCase()}" Baru
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
