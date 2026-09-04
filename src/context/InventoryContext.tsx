@@ -57,12 +57,12 @@ interface InventoryContextType {
   cleanDuplicateParts: () => Promise<void>;
 }
 
-const LOCAL_STORAGE_KEY_PARTS = 'optipart_doaibu_parts_v5';
-const LOCAL_STORAGE_KEY_TX = 'optipart_doaibu_tx_v5';
-const LOCAL_STORAGE_KEY_RETURNS = 'optipart_doaibu_returns_v5';
-const LOCAL_STORAGE_KEY_ACTIVITY = 'optipart_doaibu_activity_v5';
-const LOCAL_STORAGE_KEY_DISCREPANCY = 'optipart_doaibu_discrepancy_v5';
-const LOCAL_STORAGE_KEY_LOCATION = 'optipart_doaibu_location_v5';
+const LOCAL_STORAGE_KEY_PARTS = 'optipart_doaibu_parts_v6';
+const LOCAL_STORAGE_KEY_TX = 'optipart_doaibu_tx_v6';
+const LOCAL_STORAGE_KEY_RETURNS = 'optipart_doaibu_returns_v6';
+const LOCAL_STORAGE_KEY_ACTIVITY = 'optipart_doaibu_activity_v6';
+const LOCAL_STORAGE_KEY_DISCREPANCY = 'optipart_doaibu_discrepancy_v6';
+const LOCAL_STORAGE_KEY_LOCATION = 'optipart_doaibu_location_v6';
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
@@ -241,7 +241,7 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (data && data.length > 0) {
           console.log(`✅ Loaded ${data.length} products from Supabase Cloud DB!`);
 
-          // Detect & clean up duplicate rows in Supabase DB (supports string and numeric IDs)
+          // Detect & clean up duplicate rows in Supabase DB
           const seenDbCodesMap = new Map<string, any>();
           const duplicateDbIdsToDelete: any[] = [];
 
@@ -259,16 +259,18 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
           });
 
           if (duplicateDbIdsToDelete.length > 0) {
-            console.log(`🧹 Cleaning up ${duplicateDbIdsToDelete.length} duplicate sparepart rows from Supabase DB:`, duplicateDbIdsToDelete);
+            console.log(`🧹 Cleaning up ${duplicateDbIdsToDelete.length} duplicate rows from Supabase DB:`, duplicateDbIdsToDelete);
             supabase.from('products').delete().in('id', duplicateDbIdsToDelete).then(({ error: delErr }) => {
               if (delErr) console.warn('Clean duplicate DB rows notice:', delErr.message);
               else console.log('✅ Successfully removed duplicate rows from Supabase Cloud DB!');
             });
           }
 
+          // ✅ SUPABASE IS SINGLE SOURCE OF TRUTH — do NOT merge with localStorage
+          // Merging with localStorage was the root cause of persistent duplicates after refresh
           const uniqueDbRows = Array.from(seenDbCodesMap.values());
           const mappedParts = uniqueDbRows.map(mapDbToSparePart);
-          const deduplicatedParts = deduplicatePartsList([...mappedParts, ...currentLocal]);
+          const deduplicatedParts = deduplicatePartsList(mappedParts);
 
           setParts(deduplicatedParts);
           localStorage.setItem(LOCAL_STORAGE_KEY_PARTS, JSON.stringify(deduplicatedParts));
@@ -537,24 +539,33 @@ const InventoryProviderInner: React.FC<{ children: React.ReactNode }> = ({ child
       );
 
       const dbPayload = mapSparePartToDb(updatedPart);
-      if (isNaN(Number(dbPayload.id))) {
-        delete dbPayload.id;
-      } else {
-        dbPayload.id = Number(dbPayload.id);
-      }
+      const numericId = Number(updatedPart.id);
 
-      // Update existing item in Supabase by kode_item
-      supabase.from('products').update(dbPayload).eq('kode_item', updatedPart.kodeItem).then(({ error }) => {
-        if (error) {
-          console.warn('⚠️ Supabase update notice:', error.message);
-          // Fallback to upsert if row doesn't exist yet
-          supabase.from('products').upsert([dbPayload]).then(({ error: upsertErr }) => {
-            if (upsertErr) console.warn('⚠️ Supabase upsert notice:', upsertErr.message);
-          });
-        } else {
-          console.log('✅ Berhasil update Supabase!');
-        }
-      });
+      if (!isNaN(numericId) && numericId > 0) {
+        // ✅ Use upsert by numeric ID — most reliable approach
+        dbPayload.id = numericId;
+        supabase.from('products').upsert([dbPayload], { onConflict: 'id' }).then(({ error }) => {
+          if (error) {
+            console.warn('⚠️ Supabase upsert notice:', error.message);
+          } else {
+            console.log('✅ Berhasil update Supabase by ID:', numericId);
+          }
+        });
+      } else {
+        // Fallback: update by kode_item for legacy string IDs
+        supabase.from('products').update(dbPayload).eq('kode_item', updatedPart.kodeItem).then(({ error }) => {
+          if (error) {
+            console.warn('⚠️ Supabase update notice:', error.message);
+            // If update fails, try insert
+            delete dbPayload.id;
+            supabase.from('products').insert([dbPayload]).then(({ error: insertErr }) => {
+              if (insertErr) console.warn('⚠️ Supabase insert fallback notice:', insertErr.message);
+            });
+          } else {
+            console.log('✅ Berhasil update Supabase by kode_item:', updatedPart.kodeItem);
+          }
+        });
+      }
 
       return updatedPart;
     } else {
