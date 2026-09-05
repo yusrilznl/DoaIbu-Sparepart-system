@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { SparePart } from '../../types/inventory';
 import { useInventory } from '../../context/InventoryContext';
 import { 
-  Sparkles, Flame, DollarSign, Search, 
-  ArrowRight, Layers, ShoppingBag, Eye, 
-  CheckCircle2, ChevronRight, Star, X, ExternalLink, Filter
+  Flame, DollarSign, Search, 
+  Layers, ShoppingBag, Eye, 
+  CheckCircle2, ChevronRight, Star, X, ExternalLink
 } from 'lucide-react';
 import { DEFAULT_FILTER_PHOTO } from '../../mock/initialData';
 import { DoaIbuLogo } from '../common/DoaIbuLogo';
@@ -22,8 +22,11 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
   const [selectedCategory, setSelectedCategory] = useState<string>('FAST_MOVING');
   const [searchFilter, setSearchFilter] = useState<string>('');
 
-  const formatIdr = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Math.round(val || 0));
+  // Format IDR with "Rp " + space + digits
+  const formatIdr = (val: number) => {
+    const formatted = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Math.round(val || 0));
+    return `Rp ${formatted}`;
+  };
 
   // Helper for effective selling price
   const getEffectiveSellingPrice = (p: SparePart) => {
@@ -34,7 +37,7 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
     return 0;
   };
 
-  // Filtered Showcase Products for Modal & Preview
+  // Filtered Showcase Products for Modal
   const filteredProducts = useMemo(() => {
     let list = [...parts];
 
@@ -78,18 +81,16 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
   return (
     <div className="space-y-4 sm:space-y-5">
       
-      {/* 🌟 1. BANNER KATALOG "LOOK NGINTIP" MEMANJANG KIRI-KANAN */}
+      {/* 🌟 1. BANNER KATALOG "LOOK NGINTIP" (Tinggi Pas Sesuai Request & Bersih) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 text-white shadow-sm relative overflow-hidden">
         
         {/* Header Preview Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-sky-300 text-[10px] font-black uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-sky-400" /> Koleksi Portofolio Produk
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-sky-300 text-[10px] font-black uppercase tracking-wider">
+                KOLEKSI PORTOFOLIO PRODUK
               </span>
-              <span className="text-xs text-slate-500 hidden sm:inline">•</span>
-              <span className="text-xs text-slate-400 hidden sm:inline">Pratinjau Multi-Channel</span>
             </div>
             <h3 className="font-black text-base sm:text-lg lg:text-xl text-white mt-1">
               Katalog Koleksi Sparepart
@@ -108,10 +109,9 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
           </button>
         </div>
 
-        {/* Look Ngintip Preview Cards (Horizontal row of 4 compact cards) */}
+        {/* Look Ngintip Preview Cards (Tinggi dibuat proporsional "ngintip") */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mt-3.5">
           {previewProducts.map((p) => {
-            const effectivePrice = getEffectiveSellingPrice(p);
             const imageSrc = Array.isArray(p.gambar) && p.gambar.length > 0 
               ? p.gambar[0] 
               : (p.fotoProduk || DEFAULT_FILTER_PHOTO);
@@ -120,45 +120,27 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
               <div
                 key={p.id}
                 onClick={() => setIsModalOpen(true)}
-                className="bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-sky-400/60 rounded-xl p-2.5 sm:p-3 transition-all cursor-pointer flex flex-col justify-between group"
+                className="bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-sky-400/60 rounded-xl p-2.5 transition-all cursor-pointer flex flex-col justify-between group h-32 sm:h-36 overflow-hidden"
               >
-                <div className="space-y-2">
-                  <div className="relative w-full h-24 sm:h-28 bg-slate-900/90 rounded-lg overflow-hidden flex items-center justify-center p-1.5 border border-slate-700/50">
-                    <img 
-                      src={imageSrc} 
-                      alt={p.namaSparepart} 
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                    <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5">
-                      <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-white font-mono font-black text-[8px] uppercase">
-                        {p.brand || 'GENUINE'}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-1.5 right-1.5">
-                      <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-sky-300 font-mono font-black text-[9px]">
-                        {p.stokRealtime} {p.satuan}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="font-mono font-black text-[11px] text-sky-400 block truncate">
-                      {p.kodeItem}
+                <div className="relative w-full h-full bg-slate-900/90 rounded-lg overflow-hidden flex items-center justify-center p-1.5 border border-slate-700/50">
+                  <img 
+                    src={imageSrc} 
+                    alt={p.namaSparepart} 
+                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute top-1.5 left-1.5">
+                    <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-white font-mono font-black text-[8px] uppercase">
+                      {p.brand || 'GENUINE'}
                     </span>
-                    <h5 className="font-bold text-[11px] text-white line-clamp-1 mt-0.5">
-                      {p.namaSparepart}
-                    </h5>
                   </div>
-                </div>
-
-                <div className="mt-2 pt-1.5 border-t border-slate-700/60 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">Harga:</span>
-                  <span className="font-mono font-black text-amber-300">
-                    {effectivePrice > 0 ? formatIdr(effectivePrice) : '-'}
-                  </span>
+                  <div className="absolute bottom-1.5 right-1.5">
+                    <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-sky-300 font-mono font-black text-[9px]">
+                      {p.stokRealtime} {p.satuan}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
@@ -180,7 +162,7 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
         </div>
       </div>
 
-      {/* 🚀 2. POP-UP MODAL KATALOG LENGKAP INTERAKTIF (RESPONSIF) */}
+      {/* 🚀 2. POP-UP MODAL KATALOG INTERAKTIF */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden">
           {/* Backdrop */}
@@ -197,8 +179,8 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <DoaIbuLogo size="sm" showSubtitle={false} />
                 <div className="border-l border-slate-200 pl-2.5 sm:pl-3 min-w-0">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#0B3C85] text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate">
-                    <Sparkles className="w-3 h-3 shrink-0" /> Katalog Koleksi Sparepart
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#0B3C85] text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate">
+                    Katalog Koleksi Sparepart
                   </span>
                   <h3 className="font-black text-sm sm:text-lg md:text-xl text-slate-900 mt-0.5 truncate leading-tight">
                     Koleksi Portofolio Produk
@@ -390,17 +372,17 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
         </div>
       )}
 
-      {/* 🚀 3. BANNER CTA DI PALING BAWAH (Meninjau Seluruh Portofolio) */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+      {/* 🚀 3. BANNER CTA DI PALING BAWAH (Desain Putih Bersih Selaras Website) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0B3C85] text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center shrink-0">
             <Layers className="w-5 h-5" />
           </div>
           <div>
             <h5 className="font-black text-xs sm:text-sm text-slate-900">
               Ingin Meninjau Seluruh Portofolio Sparepart Lengkap?
             </h5>
-            <p className="text-[11px] text-slate-600 mt-0.5">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Total {parts.length} SKU suku cadang terdata dengan rincian dimensi fisik, lokasi rak, dan harga multi-channel.
             </p>
           </div>
