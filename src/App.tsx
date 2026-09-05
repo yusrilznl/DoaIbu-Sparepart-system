@@ -6,7 +6,6 @@ import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { InvestorHeroSection } from './components/dashboard/InvestorHeroSection';
 import { InvestorShowcaseCatalog } from './components/dashboard/InvestorShowcaseCatalog';
-import { RecentActivityWidget } from './components/dashboard/RecentActivityWidget';
 import { CatalogTable } from './components/catalog/CatalogTable';
 import { SalesTransactionForm } from './components/transactions/SalesTransactionForm';
 import { InboundTransactionForm } from './components/transactions/InboundTransactionForm';
@@ -15,7 +14,6 @@ import { ReportsModule } from './components/reports/ReportsModule';
 import { SecurityMonitoring } from './components/security/SecurityMonitoring';
 import { BarcodeScannerModal } from './components/common/BarcodeScannerModal';
 import { ItemDetailDrawer } from './components/catalog/ItemDetailDrawer';
-import { InvestorPricingModal } from './components/catalog/InvestorPricingModal';
 import { DraggableCameraFab } from './components/common/DraggableCameraFab';
 import { ReturnManagementModule } from './components/returns/ReturnManagementModule';
 import { SparePart } from './types/inventory';
@@ -31,7 +29,6 @@ const AppContent: React.FC = () => {
 
   const [isFabScannerOpen, setIsFabScannerOpen] = useState<boolean>(false);
   const [fabScannedPart, setFabScannedPart] = useState<SparePart | null>(null);
-  const [dashboardInvestorPart, setDashboardInvestorPart] = useState<SparePart | null>(null);
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -133,20 +130,14 @@ const AppContent: React.FC = () => {
           onCloseMobile={() => setIsSidebarOpenMobile(false)}
         />
 
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full space-y-5 sm:space-y-6 min-w-0">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full space-y-4 sm:space-y-5 min-w-0">
           {activeTab === 'dashboard' && (
-            <div className="space-y-5 sm:space-y-6">
-              {/* Top Investor Hero Section: Inventory Value, Potential Sales Value, Projected Gross Profit, Pitch Pillars */}
+            <div className="space-y-4 sm:space-y-5">
+              {/* Executive Hero Section (Row 1, Row 2, Row 3) */}
               <InvestorHeroSection onNavigate={handleNavigate} />
 
-              {/* High-Impact Featured Catalog Showcase for Investors */}
-              <InvestorShowcaseCatalog 
-                onNavigate={handleNavigate} 
-                onOpenInvestorModal={(part) => setDashboardInvestorPart(part)} 
-              />
-
-              {/* Bottom Operational Activity Logs & Mutasi Terkini */}
-              <RecentActivityWidget onNavigate={handleNavigate} />
+              {/* Look Ngintip Showcase Catalog Banner & Pop-up Modal + Bottom CTA */}
+              <InvestorShowcaseCatalog onNavigate={handleNavigate} />
             </div>
           )}
 
@@ -194,14 +185,6 @@ const AppContent: React.FC = () => {
           onClose={() => setFabScannedPart(null)}
           onSelectForOutbound={(id) => { handleNavigate('outbound', id); setFabScannedPart(null); }}
           onSelectForInbound={(id) => { handleNavigate('inbound', id); setFabScannedPart(null); }}
-        />
-      )}
-
-      {/* Dashboard Investor Pricing & Valuation Modal */}
-      {dashboardInvestorPart && (
-        <InvestorPricingModal
-          part={dashboardInvestorPart}
-          onClose={() => setDashboardInvestorPart(null)}
         />
       )}
     </div>

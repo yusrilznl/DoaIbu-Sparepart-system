@@ -197,13 +197,13 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
               <div>
                 <div className="flex justify-between items-start">
                   <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                    1. TOTAL INVENTORY VALUE
+                    INVENTORY VALUE
                   </span>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                     <DollarSign className="w-4 h-4 text-sky-300" />
                   </div>
                 </div>
-                <span className="text-[9px] sm:text-[10px] text-slate-400 block -mt-1">(Total Modal HPP Gudang)</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 block -mt-1">(Modal HPP Gudang)</span>
                 <p className="text-lg sm:text-xl md:text-2xl font-black font-mono mt-1.5 text-white tracking-tight">
                   {formatIdr(totalInventoryValue)}
                 </p>
@@ -213,12 +213,12 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
               </div>
             </div>
 
-            {/* Card 2: Total Potential Sales Value (Gross Revenue) */}
+            {/* Card 2: Potential Sales Value (Gross Revenue) */}
             <div className="bg-gradient-to-br from-[#0B3C85] via-blue-900 to-blue-950 text-white rounded-2xl p-3.5 sm:p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start">
                   <span className="text-[9px] sm:text-[10px] font-extrabold text-sky-200 uppercase tracking-wider block">
-                    2. POTENTIAL SALES VALUE
+                    POTENTIAL SALES VALUE
                   </span>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                     <TrendingUp className="w-4 h-4 text-amber-300" />
@@ -239,7 +239,7 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
               <div>
                 <div className="flex justify-between items-start">
                   <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider block">
-                    3. PROJECTED GROSS PROFIT
+                    PROJECTED GROSS PROFIT
                   </span>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                     <ArrowUpRight className="w-4 h-4 text-emerald-300" />
