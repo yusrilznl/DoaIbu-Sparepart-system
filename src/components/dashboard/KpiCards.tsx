@@ -120,7 +120,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ onNavigate }) => {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between relative group">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">INVENTORY VALUATION</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">INVENTORY VALUE</span>
               {isSuperAdminCategory && (
                 <button
                   onClick={toggleFinancialPrivacy}

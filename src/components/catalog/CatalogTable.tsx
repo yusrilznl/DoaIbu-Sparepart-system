@@ -3,13 +3,14 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { SparePart, TurnoverStatus } from '../../types/inventory';
 import { isSuperAdminRole } from '../../types/auth';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, EyeOff, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownToLine, Eye, EyeOff, Edit2, Trash2, Tag, FileSpreadsheet, DollarSign, TrendingUp, Layers, Lock, Boxes, QrCode, Camera, MapPin, Building2 } from 'lucide-react';
 import { ItemModal } from './ItemModal';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { LocationMutationModal } from './LocationMutationModal';
 import { ImageZoomModal } from '../common/ImageZoomModal';
+import { InvestorPricingModal } from './InvestorPricingModal';
 
 import { matchSparePartSearch, deduplicatePartsList, getSearchRelevanceScore } from '../../utils/searchUtils';
 
@@ -38,6 +39,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
   const [inspectingPart, setInspectingPart] = useState<SparePart | null>(null);
   const [barcodePrintPart, setBarcodePrintPart] = useState<SparePart | null>(null);
   const [locationMutationPart, setLocationMutationPart] = useState<SparePart | null>(null);
+  const [investorModalPart, setInvestorModalPart] = useState<SparePart | null>(null);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; title: string; subTitle?: string } | null>(null);
 
   const isSuperAdminCategory = isSuperAdminRole(currentUser?.role);
@@ -177,7 +179,7 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
             {shouldSensorHpp ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
           </div>
           <div>
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">INVENTORY VALUATION</p>
+            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">INVENTORY VALUE</p>
             {shouldSensorHpp ? (
               <p className="text-xl font-black text-amber-600 font-mono mt-0.5">Rp ••••••••• (Disensor)</p>
             ) : (
@@ -414,18 +416,24 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
                       </td>
 
                       {/* Harga Rekan / Mitra (S&K Berlaku - Terhide Default) */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap min-w-[140px]">
+                      <td className="py-4 px-4 text-center whitespace-nowrap min-w-[140px]">
                         {(() => {
                           const isRevealed = Boolean(revealedMitraIds[part.id]);
                           return (
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg">
-                              <span className="text-xs font-bold font-mono">
-                                {isRevealed ? (
-                                  <span className="text-emerald-700 font-black">S&K Berlaku</span>
-                                ) : (
-                                  <span className="text-slate-400 tracking-widest text-[11px]">••••••••</span>
-                                )}
-                              </span>
+                              {isRevealed ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setInvestorModalPart(part)}
+                                  className="text-xs font-black text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 cursor-pointer"
+                                  title="Klik untuk melihat Dokumen Presentasi Investor & Matriks Tiering Harga"
+                                >
+                                  <span>S&K Berlaku</span>
+                                  <Building2 className="w-3 h-3 text-emerald-600" />
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 tracking-widest text-[11px] font-mono">••••••••</span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleToggleMitra(part.id)}
@@ -583,6 +591,14 @@ export const CatalogTable: React.FC<CatalogTableProps> = ({
           title={zoomedImage.title}
           subTitle={zoomedImage.subTitle}
           onClose={() => setZoomedImage(null)}
+        />
+      )}
+
+      {/* Investor Pricing & Valuation Presentation Modal */}
+      {investorModalPart && (
+        <InvestorPricingModal
+          part={investorModalPart}
+          onClose={() => setInvestorModalPart(null)}
         />
       )}
     </div>
