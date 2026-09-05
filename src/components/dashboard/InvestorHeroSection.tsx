@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminRole } from '../../types/auth';
 import { 
   DollarSign, TrendingUp, ArrowUpRight, Package, 
-  Globe, Building, ShieldCheck, Eye, EyeOff, 
-  Layers, AlertTriangle, ChevronRight, Lock
+  Globe, Building, Eye, EyeOff, 
+  AlertTriangle, Lock
 } from 'lucide-react';
 
 interface InvestorHeroSectionProps {
@@ -48,22 +48,22 @@ export const InvestorHeroSection: React.FC<InvestorHeroSectionProps> = ({ onNavi
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-3.5 sm:space-y-4">
       
-      {/* 📌 BARIS 1: KOTAK KIRI KANAN (INVENTORY VALUE & TOTAL MARKET VALUE) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 📌 BARIS 1: KOTAK KIRI (INVENTORY VALUE) & KANAN (TOTAL MARKET VALUE) */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         
-        {/* Kiri: INVENTORY VALUE */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex items-center justify-between group hover:shadow-sm transition">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+        {/* Kotak Kiri: INVENTORY VALUE */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[135px] sm:min-h-[145px] hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">
                 INVENTORY VALUE
               </span>
               {isSuperAdminCategory && (
                 <button
                   onClick={toggleFinancialPrivacy}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                  className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer shrink-0"
                   title={isFinancialPrivacyEnabled ? "Klik untuk Tampilkan Angka HPP" : "Klik untuk Sembunyikan/Sensor HPP"}
                 >
                   {isFinancialPrivacyEnabled ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5 text-[#0B3C85]" />}
@@ -71,187 +71,196 @@ export const InvestorHeroSection: React.FC<InvestorHeroSectionProps> = ({ onNavi
               )}
             </div>
 
+            <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+              shouldSensorFinancialData 
+                ? 'bg-amber-50 border-amber-200 text-amber-700' 
+                : 'bg-blue-50 border-blue-200 text-[#0B3C85]'
+            }`}>
+              {shouldSensorFinancialData ? <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" /> : <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />}
+            </div>
+          </div>
+
+          <div className="my-1.5">
             {shouldSensorFinancialData ? (
-              <p className="text-2xl sm:text-3xl font-black text-amber-600 font-mono tracking-tight">
+              <p className="text-lg sm:text-2xl lg:text-3xl font-black text-amber-600 font-mono tracking-tight">
                 Rp •••••••••
               </p>
             ) : (
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+              <p className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight">
                 {formatIdr(inventoryValueHpp)}
               </p>
             )}
-
-            <p className="text-xs font-bold text-slate-500">
-              Total Cost Basis (At Cost) • <span className="font-mono">{parts.length} SKU</span>
-            </p>
           </div>
 
-          <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${
-            shouldSensorFinancialData 
-              ? 'bg-amber-50 border-amber-200 text-amber-700' 
-              : 'bg-blue-50 border-blue-200 text-[#0B3C85]'
-          }`}>
-            {shouldSensorFinancialData ? <Lock className="w-6 h-6 text-amber-600" /> : <DollarSign className="w-6 h-6" />}
-          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 truncate">
+            Total Cost Basis (At Cost)
+          </p>
         </div>
 
-        {/* Kanan: TOTAL MARKET VALUE */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex items-center justify-between group hover:shadow-sm transition">
-          <div className="space-y-1">
-            <span className="text-[11px] font-black text-[#0B3C85] uppercase tracking-wider block">
+        {/* Kotak Kanan: TOTAL MARKET VALUE */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[135px] sm:min-h-[145px] hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-black text-[#0B3C85] uppercase tracking-wider truncate">
               TOTAL MARKET VALUE
             </span>
 
-            <p className="text-2xl sm:text-3xl font-black text-[#0B3C85] font-mono tracking-tight">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+          </div>
+
+          <div className="my-1.5">
+            <p className="text-lg sm:text-2xl lg:text-3xl font-black text-[#0B3C85] font-mono tracking-tight">
               {formatIdr(totalMarketValue)}
             </p>
-
-            <p className="text-xs font-bold text-slate-500">
-              Total Nilai Pasar Persediaan Terpasang
-            </p>
           </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center shrink-0">
-            <TrendingUp className="w-6 h-6" />
-          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 truncate">
+            Nilai Pasar Persediaan Terpasang
+          </p>
         </div>
       </div>
 
-      {/* 📊 BARIS 2: 4 KOTAK METRICS DENGAN AKSEN WARNA TEGAS SEPERTI AWAL */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* 📊 BARIS 2: 4 KOTAK METRICS (DENGAN AKSEN WARNA ASLI DASHBOARD) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* 1. Total Sparepart */}
         <div 
           onClick={() => onNavigate('catalog')}
-          className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
+          className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
         >
           <div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block">
               TOTAL SPAREPART (SKU)
             </span>
-            <p className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{parts.length}</p>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Item Terdaftar</p>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 mt-0.5">{parts.length}</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5">Item Terdaftar</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center group-hover:bg-blue-100 transition shrink-0">
-            <Package className="w-5 h-5" />
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 border border-blue-200 text-[#0B3C85] flex items-center justify-center group-hover:bg-blue-100 transition shrink-0">
+            <Package className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* 2. Sales Channel */}
         <div 
           onClick={() => onNavigate('catalog')}
-          className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
+          className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
         >
           <div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block">
               SALES CHANNEL
             </span>
-            <p className="text-xl sm:text-2xl font-black text-[#0B3C85] mt-1">3 Platform</p>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">Shopee, Tokopedia, Mitra</p>
+            <p className="text-lg sm:text-2xl font-black text-[#0B3C85] mt-0.5">3 Platform</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5">Shopee, Tokopedia, Mitra</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center group-hover:bg-orange-100 transition shrink-0">
-            <Globe className="w-5 h-5" />
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center group-hover:bg-orange-100 transition shrink-0">
+            <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* 3. Status Gudang */}
         <div 
           onClick={() => onNavigate('opname')}
-          className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
+          className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group"
         >
           <div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+            <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block">
               STATUS GUDANG
             </span>
-            <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-1">100% Verified</p>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">PT Fardan Utama Niaga</p>
+            <p className="text-lg sm:text-2xl font-black text-emerald-700 mt-0.5">100% Verified</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5">PT Fardan Utama Niaga</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-100 transition shrink-0">
-            <Building className="w-5 h-5" />
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-100 transition shrink-0">
+            <Building className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        {/* 4. Limit Stock (Alert Merah Aktif bila ada item <= 15 Pcs) */}
+        {/* 4. Limit Stock (≤ 15 Pcs Alert) */}
         <div 
           onClick={() => onNavigate('catalog')}
-          className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
+          className={`bg-white border rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition cursor-pointer flex items-center justify-between group ${
             limitStockCount > 0 
               ? 'border-red-300 border-l-4 border-l-red-600 bg-red-50/30' 
               : 'border-slate-200'
           }`}
         >
           <div>
-            <span className="text-[10px] font-black text-red-600 uppercase tracking-wider block">
+            <span className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-wider block">
               ⚠ LIMIT STOCK (≤ 15 PCS)
             </span>
-            <p className="text-xl sm:text-2xl font-black text-red-600 mt-1">{limitStockCount} Item</p>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+            <p className="text-lg sm:text-2xl font-black text-red-600 mt-0.5">{limitStockCount} Item</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5">
               {limitStockCount > 0 ? 'Butuh Restock Segera!' : 'Semua Aman ✓'}
             </p>
           </div>
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition shrink-0 ${
+          <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition shrink-0 ${
             limitStockCount > 0 
               ? 'bg-red-100 border border-red-300 text-red-600' 
               : 'bg-slate-100 border border-slate-200 text-slate-400'
           }`}>
-            <AlertTriangle className={`w-5 h-5 ${limitStockCount > 0 ? 'animate-pulse' : ''}`} />
+            <AlertTriangle className={`w-4 h-4 sm:w-5 sm:h-5 ${limitStockCount > 0 ? 'animate-pulse' : ''}`} />
           </div>
         </div>
       </div>
 
-      {/* 📌 BARIS 3: KOTAK KIRI KANAN (POTENTIAL SALES & PROJECTED GROSS PROFIT) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 📌 BARIS 3: KOTAK KIRI (POTENTIAL SALES) & KANAN (PROJECTED GROSS PROFIT) */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         
-        {/* Kiri: POTENTIAL SALES */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex items-center justify-between group hover:shadow-sm transition">
-          <div className="space-y-1">
-            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
+        {/* Kotak Kiri: POTENTIAL SALES */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[135px] sm:min-h-[145px] hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">
               POTENTIAL SALES
             </span>
 
-            <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+          </div>
+
+          <div className="my-1.5">
+            <p className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight">
               {formatIdr(potentialSalesValue)}
             </p>
-
-            <p className="text-xs font-bold text-slate-500">
-              Proyeksi Nilai Penjualan Multi-Kanal
-            </p>
           </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-6 h-6" />
-          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 truncate">
+            Proyeksi Nilai Penjualan Multi-Kanal
+          </p>
         </div>
 
-        {/* Kanan: PROJECTED GROSS PROFIT */}
-        <div className="bg-white border border-emerald-200 rounded-2xl p-5 sm:p-6 shadow-xs flex items-center justify-between group hover:shadow-sm transition">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black text-emerald-700 uppercase tracking-wider block">
+        {/* Kotak Kanan: PROJECTED GROSS PROFIT */}
+        <div className="bg-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[135px] sm:min-h-[145px] hover:shadow-sm transition">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[10px] sm:text-xs font-black text-emerald-700 uppercase tracking-wider truncate">
                 PROJECTED GROSS PROFIT
               </span>
-              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-mono font-black text-[10px]">
+              <span className="hidden sm:inline-block bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.2 rounded-full font-mono font-black text-[10px]">
                 +{projectedMarginPercent.toFixed(1)}%
               </span>
             </div>
 
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
+              <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+          </div>
+
+          <div className="my-1.5">
             {shouldSensorFinancialData ? (
-              <p className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight">
+              <p className="text-lg sm:text-2xl lg:text-3xl font-black text-emerald-600 font-mono tracking-tight">
                 Rp •••••••••
               </p>
             ) : (
-              <p className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono tracking-tight">
+              <p className="text-lg sm:text-2xl lg:text-3xl font-black text-emerald-700 font-mono tracking-tight">
                 {formatIdr(projectedGrossProfit)}
               </p>
             )}
-
-            <p className="text-xs font-bold text-slate-500">
-              Potensi Keuntungan Bersih Realisasi Penjualan
-            </p>
           </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
-            <ArrowUpRight className="w-6 h-6" />
+          <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-slate-500">
+            <span className="truncate">Potensi Keuntungan Bersih</span>
+            <span className="sm:hidden font-mono text-emerald-700 font-black">+{projectedMarginPercent.toFixed(1)}%</span>
           </div>
         </div>
       </div>

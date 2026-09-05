@@ -81,21 +81,21 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
   return (
     <div className="space-y-4 sm:space-y-5">
       
-      {/* 🌟 1. BANNER KATALOG "LOOK NGINTIP" (Tinggi Pas Sesuai Request & Bersih) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 text-white shadow-sm relative overflow-hidden">
+      {/* 🌟 1. BANNER KATALOG "LOOK NGINTIP" (Desain Putih Bersih Selaras Tema Website) */}
+      <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 text-slate-900 shadow-xs relative overflow-hidden">
         
         {/* Header Preview Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-sky-300 text-[10px] font-black uppercase tracking-wider">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#0B3C85] text-[10px] font-black uppercase tracking-wider">
                 KOLEKSI PORTOFOLIO PRODUK
               </span>
             </div>
-            <h3 className="font-black text-base sm:text-lg lg:text-xl text-white mt-1">
+            <h3 className="font-black text-base sm:text-lg lg:text-xl text-slate-900 mt-1">
               Katalog Koleksi Sparepart
             </h3>
-            <p className="text-xs text-slate-300 font-medium mt-0.5">
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
               Klik untuk membuka seluruh katalog visual dengan filter Fast-Moving & High Margin
             </p>
           </div>
@@ -103,13 +103,13 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="self-start sm:self-center px-4 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-800 text-white font-black text-xs transition shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+            className="self-start sm:self-center px-4 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-black text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             Buka Katalog Interaktif <ExternalLink className="w-3.5 h-3.5 text-sky-300" />
           </button>
         </div>
 
-        {/* Look Ngintip Preview Cards (Tinggi dibuat proporsional "ngintip") */}
+        {/* Look Ngintip Preview Cards (Tinggi Pas & Estetik) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mt-3.5">
           {previewProducts.map((p) => {
             const imageSrc = Array.isArray(p.gambar) && p.gambar.length > 0 
@@ -120,9 +120,9 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
               <div
                 key={p.id}
                 onClick={() => setIsModalOpen(true)}
-                className="bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-sky-400/60 rounded-xl p-2.5 transition-all cursor-pointer flex flex-col justify-between group h-32 sm:h-36 overflow-hidden"
+                className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-[#0B3C85] rounded-xl p-2 sm:p-2.5 transition-all cursor-pointer flex flex-col justify-between group h-32 sm:h-36 overflow-hidden shadow-2xs hover:shadow-xs"
               >
-                <div className="relative w-full h-full bg-slate-900/90 rounded-lg overflow-hidden flex items-center justify-center p-1.5 border border-slate-700/50">
+                <div className="relative w-full h-full bg-white rounded-lg overflow-hidden flex items-center justify-center p-1.5 border border-slate-200/80">
                   <img 
                     src={imageSrc} 
                     alt={p.namaSparepart} 
@@ -132,12 +132,12 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
                     }}
                   />
                   <div className="absolute top-1.5 left-1.5">
-                    <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-white font-mono font-black text-[8px] uppercase">
+                    <span className="px-1.5 py-0.2 rounded bg-slate-900/90 text-white font-mono font-black text-[8px] uppercase">
                       {p.brand || 'GENUINE'}
                     </span>
                   </div>
                   <div className="absolute bottom-1.5 right-1.5">
-                    <span className="px-1.5 py-0.2 rounded bg-slate-950/80 text-sky-300 font-mono font-black text-[9px]">
+                    <span className="px-1.5 py-0.2 rounded bg-blue-50 border border-blue-200 text-[#0B3C85] font-mono font-black text-[9px]">
                       {p.stokRealtime} {p.satuan}
                     </span>
                   </div>
@@ -150,13 +150,13 @@ export const InvestorShowcaseCatalog: React.FC<InvestorShowcaseCatalogProps> = (
         {/* Interactive Indicator Strip */}
         <div 
           onClick={() => setIsModalOpen(true)}
-          className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 hover:text-sky-300 transition cursor-pointer"
+          className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 hover:text-[#0B3C85] transition cursor-pointer font-medium"
         >
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Tersedia {parts.length} item siap supply di warehouse
           </span>
-          <span className="font-black text-sky-400 flex items-center gap-0.5 text-xs">
+          <span className="font-black text-[#0B3C85] flex items-center gap-0.5 text-xs">
             Klik untuk Lihat Katalog Lengkap <ChevronRight className="w-3.5 h-3.5" />
           </span>
         </div>
