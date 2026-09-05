@@ -1,7 +1,11 @@
 import React from 'react';
 import { SparePart } from '../../types/inventory';
 import { useInventory } from '../../context/InventoryContext';
-import { X, TrendingUp, Building2, ShoppingBag, ShieldCheck, CheckCircle2, DollarSign, Layers, Printer } from 'lucide-react';
+import { 
+  X, TrendingUp, Building2, ShoppingBag, ShieldCheck, 
+  CheckCircle2, DollarSign, Layers, Printer, ArrowUpRight, 
+  HelpCircle, PieChart, Sparkles, AlertCircle, RefreshCw
+} from 'lucide-react';
 import { DoaIbuLogo } from '../common/DoaIbuLogo';
 
 interface InvestorPricingModalProps {
@@ -9,10 +13,13 @@ interface InvestorPricingModalProps {
   onClose: () => void;
 }
 
-export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part, onClose }) => {
+export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part: initialPart, onClose }) => {
   const { parts } = useInventory();
 
-  if (!part) return null;
+  if (!initialPart) return null;
+
+  // Always find the freshest version of the part from real-time context
+  const part = parts.find(p => p.id === initialPart.id) || initialPart;
 
   // Format IDR Helper
   const formatIdr = (val: number) => {
@@ -20,23 +27,105 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
       style: 'currency',
       currency: 'IDR',
       maximumFractionDigits: 0,
-    }).format(val || 0);
+    }).format(Math.round(val || 0));
   };
 
-  // Calculate Total Inventory Value from Master Catalog
-  const totalInventoryValue = parts.reduce((acc, p) => acc + (p.stokRealtime * (p.hargaBeli || 0)), 0);
-  const totalMarketValue = parts.reduce((acc, p) => acc + (p.stokRealtime * (p.hargaShopee || p.hargaJual || 0)), 0);
-  const itemInventoryValue = part.stokRealtime * (part.hargaBeli || 0);
+  // Helper to determine effective selling price for a part
+  const getEffectiveSellingPrice = (p: SparePart) => {
+    if (p.hargaShopee && p.hargaShopee > 0) return p.hargaShopee;
+    if (p.hargaTokopedia && p.hargaTokopedia > 0) return p.hargaTokopedia;
+    if (p.hargaJual && p.hargaJual > 0) return p.hargaJual;
+    if (p.hargaBeli && p.hargaBeli > 0) return p.hargaBeli * 1.30; // Benchmark 30% markup if not yet inputted
+    return 0;
+  };
 
-  // Default calculation helpers for Tiers based on marketplace / base prices (ready for owner customization)
-  const basePrice = part.hargaShopee && part.hargaShopee > 0 ? part.hargaShopee : (part.hargaJual || part.hargaBeli * 1.25);
+  // 1. GLOBAL INVENTORY METRICS (Valuasi Gudang Keseluruhan)
+  const totalInventoryValue = parts.reduce((acc, p) => acc + (p.stokRealtime * (p.hargaBeli || 0)), 0);
+  const totalPotentialSalesValue = parts.reduce((acc, p) => acc + (p.stokRealtime * getEffectiveSellingPrice(p)), 0);
+  const totalPotentialProfit = Math.max(0, totalPotentialSalesValue - totalInventoryValue);
+  const totalPotentialMarginPercent = totalPotentialSalesValue > 0 
+    ? ((totalPotentialProfit / totalPotentialSalesValue) * 100) 
+    : 0;
+
+  // 2. SELECTED ITEM METRICS (Valuasi SKU Terpilih)
+  const isCustomPriceSet = (part.hargaShopee && part.hargaShopee > 0) || (part.hargaJual && part.hargaJual > 0) || (part.hargaTokopedia && part.hargaTokopedia > 0);
+  const itemHpp = part.hargaBeli || 0;
+  const itemStock = part.stokRealtime || 0;
+  const itemInventoryValue = itemStock * itemHpp;
   
-  // Tier 1: Mitra Prioritas (Volume Besar) -> Base - 15%
-  const tier1Price = Math.round(basePrice * 0.85);
-  // Tier 2: Mitra Reguler (Grosir Menengah) -> Base - 10%
-  const tier2Price = Math.round(basePrice * 0.90);
-  // Tier 3: Mitra Retail (Bengkel Rekanan) -> Base - 5%
-  const tier3Price = Math.round(basePrice * 0.95);
+  // Base reference price for tiering calculations
+  const effectiveBasePrice = getEffectiveSellingPrice(part);
+  const itemPotentialSalesValue = itemStock * effectiveBasePrice;
+  const itemPotentialProfit = Math.max(0, itemPotentialSalesValue - itemInventoryValue);
+  const itemMarginPercent = itemPotentialSalesValue > 0 
+    ? ((itemPotentialProfit / itemPotentialSalesValue) * 100) 
+    : 0;
+
+  // Tiering Prices Calculation (Diskon bertingkat profesional dari base market price)
+  const tier1UnitPrice = Math.round(effectiveBasePrice * 0.85); // -15% Volume Besar
+  const tier2UnitPrice = Math.round(effectiveBasePrice * 0.90); // -10% Grosir Menengah
+  const tier3UnitPrice = Math.round(effectiveBasePrice * 0.95); // -5% Retail Partner
+  const shopeeUnitPrice = part.hargaShopee && part.hargaShopee > 0 ? part.hargaShopee : effectiveBasePrice;
+  const tokopediaUnitPrice = part.hargaTokopedia && part.hargaTokopedia > 0 ? part.hargaTokopedia : effectiveBasePrice;
+
+  // Tier Matrix Definitions
+  const tiers = [
+    {
+      tierNo: '1',
+      name: 'Tier 1 (Wholesale / Distributor)',
+      badge: 'Prioritas',
+      badgeColor: 'bg-blue-100 text-[#0B3C85] border-blue-200',
+      description: 'Mitra Prioritas / Distributor Utama (Order Volume Besar > 50 Pcs)',
+      unitPrice: tier1UnitPrice,
+      potentialSalesValue: itemStock * tier1UnitPrice,
+      profitPerUnit: Math.max(0, tier1UnitPrice - itemHpp),
+      isDirectInput: false,
+    },
+    {
+      tierNo: '2',
+      name: 'Tier 2 (Grosir Menengah)',
+      badge: 'Grosir',
+      badgeColor: 'bg-sky-100 text-sky-800 border-sky-200',
+      description: 'Mitra Reguler / Toko Sparepart & Bengkel Rekanan Menengah',
+      unitPrice: tier2UnitPrice,
+      potentialSalesValue: itemStock * tier2UnitPrice,
+      profitPerUnit: Math.max(0, tier2UnitPrice - itemHpp),
+      isDirectInput: false,
+    },
+    {
+      tierNo: '3',
+      name: 'Tier 3 (Retail Partner)',
+      badge: 'Retail',
+      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      description: 'Bengkel Kecil / Retail Partner Pembelian Minimum Ringan',
+      unitPrice: tier3UnitPrice,
+      potentialSalesValue: itemStock * tier3UnitPrice,
+      profitPerUnit: Math.max(0, tier3UnitPrice - itemHpp),
+      isDirectInput: false,
+    },
+    {
+      tierNo: '🛍️',
+      name: 'Harga Jual Shopee',
+      badge: 'Official Online Store',
+      badgeColor: 'bg-orange-100 text-orange-800 border-orange-200',
+      description: 'Kanal Publik Shopee Indonesia (Marketplace B2C / Retail)',
+      unitPrice: shopeeUnitPrice,
+      potentialSalesValue: itemStock * shopeeUnitPrice,
+      profitPerUnit: Math.max(0, shopeeUnitPrice - itemHpp),
+      isDirectInput: Boolean(part.hargaShopee && part.hargaShopee > 0),
+    },
+    {
+      tierNo: '🟢',
+      name: 'Harga Jual Tokopedia / TikTok',
+      badge: 'Official Online Store',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      description: 'Kanal Resmi Tokopedia & TikTok Shop (Marketplace B2C)',
+      unitPrice: tokopediaUnitPrice,
+      potentialSalesValue: itemStock * tokopediaUnitPrice,
+      profitPerUnit: Math.max(0, tokopediaUnitPrice - itemHpp),
+      isDirectInput: Boolean(part.hargaTokopedia && part.hargaTokopedia > 0),
+    },
+  ];
 
   const handlePrint = () => {
     window.print();
@@ -47,11 +136,11 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
       {/* Dark Backdrop */}
       <div 
         onClick={onClose}
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm transition-opacity" 
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl z-10 p-5 sm:p-7 space-y-6 animate-in zoom-in-95 duration-200 border border-slate-200">
+      <div className="relative bg-white rounded-3xl max-w-4xl w-full max-h-[94vh] overflow-y-auto shadow-2xl z-10 p-5 sm:p-7 space-y-6 animate-in zoom-in-95 duration-200 border border-slate-200">
         
         {/* Header Bar */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-4">
@@ -59,10 +148,10 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
             <DoaIbuLogo size="sm" showSubtitle={true} />
             <div className="border-l border-slate-200 pl-3">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#0B3C85] text-[10px] font-black uppercase tracking-wider">
-                <ShieldCheck className="w-3.5 h-3.5" /> Investor & Partner Presentation
+                <ShieldCheck className="w-3.5 h-3.5" /> Investor & Partner Valuation Matrix
               </span>
               <h3 className="font-black text-lg sm:text-xl text-slate-900 mt-0.5">
-                Struktur Harga Rekan / Mitra & Valuasi
+                Struktur Harga Rekan / Mitra & Valuasi Penjualan
               </h3>
             </div>
           </div>
@@ -84,63 +173,152 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
           </div>
         </div>
 
-        {/* Top Metric Cards: Inventory Value & Item Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 1: Total Inventory Value */}
-          <div className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-4 sm:p-5 shadow-md flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-extrabold text-sky-300 uppercase tracking-widest block">
-                TOTAL INVENTORY VALUE (GUDANG)
-              </span>
-              <p className="text-2xl sm:text-3xl font-black font-mono mt-1 text-white tracking-tight">
-                {formatIdr(totalInventoryValue)}
-              </p>
-              <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-300">
-                <span>Total Item: <b className="text-white">{parts.length} SKU</b></span>
-                <span>•</span>
-                <span>Potensi Pasar: <b className="text-emerald-400">{formatIdr(totalMarketValue)}</b></span>
+        {/* Dynamic Real-Time Sync Status Notice */}
+        <div className="flex items-center justify-between bg-blue-50/80 border border-blue-200 rounded-2xl px-4 py-2.5 text-xs text-blue-900">
+          <div className="flex items-center gap-2 font-bold">
+            <RefreshCw className="w-4 h-4 text-[#0B3C85] animate-spin-slow shrink-0" />
+            <span>Katalog Terkoneksi Real-time: Nilai otomatis terupdate saat harga atau stok baru diinput di sistem.</span>
+          </div>
+          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${isCustomPriceSet ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+            {isCustomPriceSet ? '✓ Harga Terkonfirmasi Admin' : '⚡ Estimasi Standar (+30% Margin)'}
+          </span>
+        </div>
+
+        {/* Top 3 Metric Cards for Investors */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {/* Card 1: Total Inventory Value (Cost / Modal) */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                  1. TOTAL INVENTORY VALUE
+                </span>
+                <span className="text-[10px] text-slate-400 block -mt-0.5">(Total Modal / HPP Gudang)</span>
+                <p className="text-xl sm:text-2xl font-black font-mono mt-2 text-white tracking-tight">
+                  {formatIdr(totalInventoryValue)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <DollarSign className="w-5 h-5 text-sky-300" />
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
-              <DollarSign className="w-6 h-6 text-sky-300" />
+            <div className="mt-3 text-[11px] text-slate-300 flex items-center gap-1.5 font-medium border-t border-white/10 pt-2">
+              <span>Total SKU: <b className="text-white">{parts.length} Item</b></span>
             </div>
           </div>
 
-          {/* Card 2: Selected Item Overview */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex items-center justify-between">
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                PART NUMBER TERPILIH
-              </span>
-              <h4 className="font-mono font-black text-slate-900 text-base sm:text-lg truncate">
-                {part.kodeItem}
-              </h4>
-              <p className="text-xs text-slate-600 font-bold truncate max-w-[230px]">
-                {part.namaSparepart}
-              </p>
-              <p className="text-[11px] text-slate-500 font-semibold">
-                Stok Fisik: <b className="text-[#0B3C85]">{part.stokRealtime} {part.satuan}</b> | Valuasi: <b className="text-emerald-700">{formatIdr(itemInventoryValue)}</b>
-              </p>
+          {/* Card 2: Total Potential Sales Value (Gross Revenue) */}
+          <div className="bg-gradient-to-br from-[#0B3C85] to-blue-900 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-extrabold text-sky-200 uppercase tracking-wider block">
+                  2. POTENTIAL SALES VALUE
+                </span>
+                <span className="text-[10px] text-sky-200/80 block -mt-0.5">(Potensi Nilai Penjualan Kotor)</span>
+                <p className="text-xl sm:text-2xl font-black font-mono mt-2 text-amber-300 tracking-tight">
+                  {formatIdr(totalPotentialSalesValue)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-amber-300" />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-              <Layers className="w-6 h-6 text-[#0B3C85]" />
+            <div className="mt-3 text-[11px] text-sky-100 flex items-center gap-1.5 font-medium border-t border-white/10 pt-2">
+              <span>Rumus: <b className="text-white">Σ (Stok × Harga Jual)</b></span>
+            </div>
+          </div>
+
+          {/* Card 3: Projected Gross Profit & ROI */}
+          <div className="bg-gradient-to-br from-emerald-900 to-teal-950 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-extrabold text-emerald-300 uppercase tracking-wider block">
+                  3. PROJECTED GROSS PROFIT
+                </span>
+                <span className="text-[10px] text-emerald-300/80 block -mt-0.5">(Potensi Keuntungan Bersih)</span>
+                <p className="text-xl sm:text-2xl font-black font-mono mt-2 text-emerald-300 tracking-tight">
+                  {formatIdr(totalPotentialProfit)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <ArrowUpRight className="w-5 h-5 text-emerald-300" />
+              </div>
+            </div>
+            <div className="mt-3 text-[11px] text-emerald-200 flex items-center justify-between font-medium border-t border-white/10 pt-2">
+              <span>Margin Potensial:</span>
+              <b className="text-emerald-300 bg-emerald-800/60 px-2 py-0.5 rounded font-mono font-black">
+                +{totalPotentialMarginPercent.toFixed(1)}%
+              </b>
             </div>
           </div>
         </div>
 
-        {/* Main Section: Pricing Matrix Table for Investor */}
+        {/* Selected Part Detail Card */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+            <div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                PART NUMBER TERPILIH
+              </span>
+              <h4 className="font-mono font-black text-slate-900 text-base sm:text-lg">
+                {part.kodeItem} <span className="text-xs font-bold text-slate-500 font-sans">({part.brand})</span>
+              </h4>
+              <p className="text-xs text-slate-700 font-bold">
+                {part.namaSparepart}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-slate-400 block">Stok Fisik Tersedia</span>
+                <span className="font-mono font-black text-lg text-[#0B3C85]">
+                  {itemStock} {part.satuan}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Part Level Financial Breakdown */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs">
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-400 block">Modal HPP Satuan</span>
+              <span className="font-mono font-black text-slate-800 text-sm">
+                {formatIdr(itemHpp)}
+              </span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-400 block">Total Modal (Inventory Value)</span>
+              <span className="font-mono font-black text-slate-900 text-sm">
+                {formatIdr(itemInventoryValue)}
+              </span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-blue-200 bg-blue-50/40">
+              <span className="text-[10px] font-bold text-[#0B3C85] block">Potensi Penjualan (Sales Value)</span>
+              <span className="font-mono font-black text-[#0B3C85] text-sm">
+                {formatIdr(itemPotentialSalesValue)}
+              </span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/40">
+              <span className="text-[10px] font-bold text-emerald-800 block">Potensi Laba Kotor Item</span>
+              <span className="font-mono font-black text-emerald-700 text-sm">
+                {formatIdr(itemPotentialProfit)} <span className="text-[10px] font-normal">({itemMarginPercent.toFixed(0)}%)</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Matrix Table: Multi-Tier Pricing & Potential Sales Value */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-[#0B3C85]" /> Matriks Skema Harga Mitra (Tiering) & Marketplace
+                <Building2 className="w-4 h-4 text-[#0B3C85]" /> Matriks Skema Harga Rekan / Mitra & Potential Sales Value
               </h4>
               <p className="text-[11px] text-slate-500 font-medium">
-                Daftar level harga rekanan terstruktur dan harga jual resmi multi-channel
+                Simulasi nilai pendapatan jika seluruh stok ({itemStock} {part.satuan}) diserap pada masing-masing level penjualan
               </p>
             </div>
-            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-              S&K Berlaku Aktif
+            <span className="text-[10px] font-extrabold text-[#0B3C85] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+              Multi-Channel Matrix
             </span>
           </div>
 
@@ -148,146 +326,87 @@ export const InvestorPricingModal: React.FC<InvestorPricingModalProps> = ({ part
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-900 text-white font-extrabold uppercase text-[10px] tracking-wider">
-                  <th className="py-3 px-4">Level / Kanal Penjualan</th>
-                  <th className="py-3 px-4">Kategori Mitra & Ketentuan</th>
-                  <th className="py-3 px-4 text-right">Harga Satuan (Rp)</th>
-                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-3.5">Level / Kanal</th>
+                  <th className="py-3 px-3.5">Kategori & Ketentuan</th>
+                  <th className="py-3 px-3 text-right">Harga Satuan</th>
+                  <th className="py-3 px-3.5 text-right bg-slate-800 text-amber-300">Potential Sales Value</th>
+                  <th className="py-3 px-3 text-right">Potensi Margin</th>
+                  <th className="py-3 px-3 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
-                {/* 1. Tier 1 */}
-                <tr className="hover:bg-blue-50/40 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-[#0B3C85] text-white font-black text-[11px] flex items-center justify-center shrink-0">
-                        1
-                      </span>
-                      <span className="font-black text-slate-900 text-xs">Tier 1</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Mitra Prioritas / Distributor Utama (Pembelian Volume Besar)
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-[#0B3C85]">
-                    {formatIdr(tier1Price)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-[#0B3C85] text-[10px] font-bold">
-                      Prioritas
-                    </span>
-                  </td>
-                </tr>
+                {tiers.map((t, idx) => {
+                  const marginPct = t.unitPrice > 0 ? ((t.profitPerUnit / t.unitPrice) * 100) : 0;
 
-                {/* 2. Tier 2 */}
-                <tr className="hover:bg-blue-50/40 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-sky-600 text-white font-black text-[11px] flex items-center justify-center shrink-0">
-                        2
-                      </span>
-                      <span className="font-black text-slate-900 text-xs">Tier 2</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Mitra Reguler / Grosir Menengah & Kontraktor Rekanan
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-sky-800">
-                    {formatIdr(tier2Price)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 text-[10px] font-bold">
-                      Grosir
-                    </span>
-                  </td>
-                </tr>
-
-                {/* 3. Tier 3 */}
-                <tr className="hover:bg-blue-50/40 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-black text-[11px] flex items-center justify-center shrink-0">
-                        3
-                      </span>
-                      <span className="font-black text-slate-900 text-xs">Tier 3</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Mitra Retail / Bengkel Rekanan & Toko Cabang
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-indigo-900">
-                    {formatIdr(tier3Price)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">
-                      Retail
-                    </span>
-                  </td>
-                </tr>
-
-                {/* 4. Harga Jual Shopee */}
-                <tr className="hover:bg-orange-50/40 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-5 h-5 text-orange-600 shrink-0" />
-                      <span className="font-black text-orange-700 text-xs">Harga Jual Shopee</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Kanal Resmi Shopee (Marketplace Publik)
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-orange-600">
-                    {part.hargaShopee && part.hargaShopee > 0 ? formatIdr(part.hargaShopee) : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 text-[10px] font-bold">
-                      Online Store
-                    </span>
-                  </td>
-                </tr>
-
-                {/* 5. Harga Jual Tokopedia / TikTok */}
-                <tr className="hover:bg-emerald-50/40 transition">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="w-5 h-5 text-emerald-700 shrink-0" />
-                      <span className="font-black text-emerald-800 text-xs">Harga Jual Tokopedia / TikTok</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Kanal Resmi Tokopedia & TikTok Shop
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-black text-sm text-emerald-800">
-                    {part.hargaTokopedia && part.hargaTokopedia > 0 ? formatIdr(part.hargaTokopedia) : '-'}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      Online Store
-                    </span>
-                  </td>
-                </tr>
+                  return (
+                    <tr key={idx} className="hover:bg-blue-50/40 transition">
+                      <td className="py-3 px-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-700 font-black text-[10px] flex items-center justify-center shrink-0 border border-slate-200">
+                            {t.tierNo}
+                          </span>
+                          <span className="font-black text-slate-900 text-xs">{t.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5 text-slate-600 text-[11px]">
+                        {t.description}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-xs text-slate-900">
+                        {formatIdr(t.unitPrice)}
+                      </td>
+                      <td className="py-3 px-3.5 text-right font-mono font-black text-xs text-[#0B3C85] bg-blue-50/30">
+                        {formatIdr(t.potentialSalesValue)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-[11px] text-emerald-700">
+                        +{marginPct.toFixed(0)}% <span className="text-[9px] text-slate-400 font-normal block font-sans">({formatIdr(t.profitPerUnit * itemStock)})</span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold border ${t.badgeColor}`}>
+                          {t.badge}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* S&K Note Footer Box */}
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1 text-xs">
-          <div className="flex items-center gap-1.5 font-extrabold text-slate-800">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Catatan Syarat & Ketentuan (S&K) Rekan / Mitra:
+        {/* Formula Explanation Note for Investor */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+            <div className="flex items-center gap-1.5 font-black text-slate-800 text-[11px]">
+              <PieChart className="w-4 h-4 text-[#0B3C85]" /> Rumus Perhitungan Potential Sales Value:
+            </div>
+            <p className="text-slate-600 text-[10px] leading-relaxed">
+              • <b>Potential Sales Value</b> = <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold">Stok Fisik × Harga Jual Terpasang</span><br />
+              • <b>Projected Gross Profit</b> = <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold">Potential Sales Value - Total HPP Modal</span><br />
+              • Memberikan kepastian proyeksi likuiditas dan nilai realisasi persediaan secara komprehensif.
+            </p>
           </div>
-          <p className="text-slate-600 text-[11px] leading-relaxed">
-            1. Harga Tier 1 berlaku untuk pesanan minimum volume partai besar dengan jadwal supply rutin bulanan.<br />
-            2. Harga Tier 2 dan Tier 3 disesuaikan dengan skala bengkel, toko cabang, dan termin pembayaran yang disepakati.<br />
-            3. Seluruh komponen sparepart dijamin 100% Genuine / OEM Quality dengan standar pengujian warehouse PT Fardan Utama Niaga.
-          </p>
+
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+            <div className="flex items-center gap-1.5 font-black text-slate-800 text-[11px]">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Jaminan Kualitas & Standar Mitra:
+            </div>
+            <p className="text-slate-600 text-[10px] leading-relaxed">
+              • Seluruh stok tercatat real-time dari database warehouse PT Fardan Utama Niaga.<br />
+              • Skema harga Tier 1, 2, dan 3 dapat disesuaikan dengan volume kontrak berkala.<br />
+              • Setiap perubahan harga baru di master katalog akan langsung memperbarui kalkulasi ini.
+            </p>
+          </div>
         </div>
 
         {/* Modal Action Buttons */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+          <span className="text-[11px] text-slate-400 font-medium">
+            Dokumen internal PT Fardan Utama Niaga • OptiPart Doa Ibu
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs transition shadow-sm cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-[#0B3C85] hover:bg-blue-900 text-white font-extrabold text-xs transition shadow-sm cursor-pointer"
           >
             Tutup Presentasi
           </button>
